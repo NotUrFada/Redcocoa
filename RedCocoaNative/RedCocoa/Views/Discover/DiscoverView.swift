@@ -8,6 +8,7 @@ struct DiscoverView: View {
     @State private var showFilters = false
     @State private var showMatchOverlay = false
     @State private var matchedProfile: Profile?
+    var profileRefreshTrigger: UUID = UUID()
     var onProfileTap: (() -> Void)? = nil
     var onMatch: (() -> Void)? = nil
     
@@ -102,6 +103,7 @@ struct DiscoverView: View {
                                 .foregroundStyle(Color.textMuted)
                         }
                     }
+                    .id("\(urlString)-\(profileRefreshTrigger.uuidString)")
                 } else {
                     Image(systemName: "person.circle.fill")
                         .font(.system(size: 32))

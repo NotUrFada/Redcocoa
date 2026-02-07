@@ -20,6 +20,7 @@ class AuthManager: ObservableObject {
     }
     
     func checkSession() async {
+        loading = true
         guard let supabase = supabase else {
             user = AppUser(id: "demo", email: "demo@redcocoa.app")
             profile = Profile(id: "demo", name: "Demo User")
@@ -93,6 +94,11 @@ class AuthManager: ObservableObject {
             return
         }
         let session = try await supabase.auth.session
+        let userId = session.user.id.uuidString
+        
+        // Delete user's storage objects first (required - Supabase blocks user deletion if they own storage)
+        await deleteUserStorageFiles(supabase: supabase, path: userId)
+        
         guard let url = URL(string: Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String ?? ""),
               var components = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
             throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid Supabase URL"])
@@ -106,15 +112,24 @@ class AuthManager: ObservableObject {
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String ?? "", forHTTPHeaderField: "apikey")
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
             throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to delete account"])
+        }
+        guard (200...299).contains(http.statusCode) else {
+            var message = "Failed to delete account"
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let msg = json["msg"] as? String ?? json["message"] as? String ?? json["error_description"] as? String {
+                message = msg
+            }
+            throw NSError(domain: "AuthManager", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: message])
         }
         try await supabase.auth.signOut()
         user = nil
         profile = nil
         onboardingComplete = false
         UserDefaults.standard.removeObject(forKey: "onboardingComplete")
+        UserDefaults.standard.removeObject(forKey: "onboardingComplete_\(userId)")
     }
     
     func resetPassword(email: String) async throws {
@@ -199,6 +214,27 @@ class AuthManager: ObservableObject {
         let normalized = phone.hasPrefix("+") ? phone : "+1\(phone.filter { $0.isNumber })"
         _ = try await supabase.auth.verifyOTP(phone: normalized, token: token, type: .sms)
         await checkSession()
+    }
+    
+    private func deleteUserStorageFiles(supabase: SupabaseClient, path: String) async {
+        do {
+            let items = try await supabase.storage.from("avatars").list(path: path)
+            var pathsToRemove: [String] = []
+            for item in items {
+                let fullPath = path.isEmpty ? item.name : "\(path)/\(item.name)"
+                // FileObject with id == nil is a folder (prefix)
+                if item.id == nil {
+                    await deleteUserStorageFiles(supabase: supabase, path: fullPath)
+                } else {
+                    pathsToRemove.append(fullPath)
+                }
+            }
+            if !pathsToRemove.isEmpty {
+                try await supabase.storage.from("avatars").remove(paths: pathsToRemove)
+            }
+        } catch {
+            print("Storage cleanup before delete: \(error)")
+        }
     }
     
     private func randomNonceString(length: Int = 32) -> String {

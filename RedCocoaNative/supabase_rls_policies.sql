@@ -22,20 +22,21 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 3. Profiles RLS
+-- 3. Profiles RLS (fixes "new row violates row-level security policy" on photo upload)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view all profiles" ON public.profiles;
-CREATE POLICY "Users can view all profiles" ON public.profiles
-  FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
+CREATE POLICY "Profiles are viewable by everyone" ON public.profiles
+  FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" ON public.profiles
-  FOR INSERT WITH CHECK (auth.uid()::text = id);
+  FOR INSERT WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles
-  FOR UPDATE USING (auth.uid()::text = id);
+  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 -- 4. Storage avatars bucket - allow authenticated users to upload to their folder
 -- First ensure the bucket exists (run in Supabase Dashboard > Storage if needed)
@@ -49,7 +50,30 @@ END $$;
 DROP POLICY IF EXISTS "Users can upload own avatar" ON storage.objects;
 CREATE POLICY "Users can upload own avatar" ON storage.objects
   FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'avatars' AND (string_to_array(name, '/'))[1] = auth.uid()::text);
+  WITH CHECK (
+    bucket_id = 'avatars'
+    AND lower((string_to_array(name, '/'))[1]) = lower(auth.uid()::text)
+  );
+
+DROP POLICY IF EXISTS "Users can update own avatar" ON storage.objects;
+CREATE POLICY "Users can update own avatar" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'avatars'
+    AND lower((string_to_array(name, '/'))[1]) = lower(auth.uid()::text)
+  )
+  WITH CHECK (
+    bucket_id = 'avatars'
+    AND lower((string_to_array(name, '/'))[1]) = lower(auth.uid()::text)
+  );
+
+DROP POLICY IF EXISTS "Users can delete own avatar" ON storage.objects;
+CREATE POLICY "Users can delete own avatar" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'avatars'
+    AND lower((string_to_array(name, '/'))[1]) = lower(auth.uid()::text)
+  );
 
 DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
 CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
