@@ -2,13 +2,13 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject var auth: AuthManager
-    @AppStorage("RedCocoa.hasSeenWelcome") private var hasSeenWelcome = false
+    @AppStorage("RedCocoa.v2.hasSeenWelcome") private var hasSeenWelcome = false
     @State private var splashFinished = false
     
     var body: some View {
         Group {
             if !splashFinished {
-                SplashView(onFinish: { splashFinished = true })
+                SplashView()
             } else if !hasSeenWelcome {
                 WelcomeView(onGetStarted: {
                     hasSeenWelcome = true
@@ -24,6 +24,13 @@ struct RootView: View {
             }
         }
         .background(Color.bgDark)
+        .animation(.easeInOut(duration: 0.3), value: splashFinished)
+        .animation(.easeInOut(duration: 0.3), value: hasSeenWelcome)
+        .task(id: splashFinished) {
+            guard !splashFinished else { return }
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            splashFinished = true
+        }
     }
 }
 
