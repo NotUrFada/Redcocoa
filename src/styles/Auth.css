@@ -1,0 +1,173 @@
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-dark);
+  padding: var(--spacing-lg);
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 340px;
+}
+
+.auth-brand {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.auth-brand .brand-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--color-brand);
+  border-radius: 50%;
+  margin: 0 auto var(--spacing-md);
+}
+
+.auth-brand h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-off-white);
+  margin-bottom: 4px;
+}
+
+.auth-brand p {
+  color: rgba(var(--color-off-white-rgb), 0.7);
+  font-size: 15px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.auth-form input {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(var(--color-off-white-rgb), 0.2);
+  background: rgba(var(--color-off-white-rgb), 0.1);
+  color: var(--color-off-white);
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.auth-form input::placeholder {
+  color: rgba(var(--color-off-white-rgb), 0.5);
+}
+
+.auth-form .btn-primary {
+  padding: 16px;
+  background: var(--color-brand);
+  color: var(--color-off-white);
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: var(--spacing-sm);
+}
+
+.auth-form .btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.auth-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(var(--color-off-white-rgb), 0.8);
+  cursor: pointer;
+}
+
+.auth-checkbox input {
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.auth-checkbox a {
+  color: var(--color-brand);
+  text-decoration: underline;
+}
+
+.auth-error {
+  padding: 12px;
+  background: rgba(229, 62, 62, 0.2);
+  color: #fca5a5;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: var(--spacing-lg);
+  color: rgba(var(--color-off-white-rgb), 0.7);
+  font-size: 14px;
+}
+
+.auth-switch button,
+.auth-forgot button {
+  background: none;
+  border: none;
+  color: var(--color-brand);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.auth-forgot {
+  text-align: right;
+  margin-top: -8px;
+  margin-bottom: 0;
+}
+
+.auth-forgot button {
+  font-size: 14px;
+}
+
+/* Auth callback (email confirm / link expired) */
+.auth-callback .auth-callback-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-off-white);
+  margin-bottom: var(--spacing-md);
+}
+
+.auth-callback-message {
+  color: rgba(var(--color-off-white-rgb), 0.85);
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: var(--spacing-xl);
+}
+
+.auth-callback-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.auth-callback-btn {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: var(--radius-full);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.auth-callback-btn.primary {
+  background: var(--color-brand);
+  color: var(--color-off-white);
+  border: none;
+}
+
+.auth-callback-btn.secondary {
+  background: transparent;
+  color: var(--color-brand);
+  border: 1px solid var(--color-brand);
+}

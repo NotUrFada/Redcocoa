@@ -1,0 +1,48 @@
+.app-header {
+  background-color: var(--color-bg-dark);
+  color: var(--color-text-inverse);
+  padding: 48px var(--spacing-md) var(--spacing-md);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.header-subtitle {
+  font-size: 13px;
+  opacity: 0.8;
+  margin-top: var(--spacing-sm);
+}
+
+.icon-btn {
+  background: rgba(var(--color-off-white-rgb), 0.1);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  color: var(--color-off-white);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: rgba(var(--color-off-white-rgb), 0.2);
+}
+
+.icon-btn:active {
+  transform: scale(0.92);
+}
