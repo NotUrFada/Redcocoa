@@ -7,19 +7,87 @@ struct DiscoverCardStack: View {
     let onMessage: () -> Void
     var onTap: (() -> Void)?
     
+    @State private var dragOffset: CGSize = .zero
+    @State private var isDragging = false
+    @State private var buttonSwipeDirection: CGFloat? = nil
+    
+    private let swipeThreshold: CGFloat = 100
+    private let rotationStrength: Double = 0.15
+    
     var body: some View {
         VStack(spacing: 0) {
-            // Card - fills available space
-            ProfileCardView(profile: profile)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onTapGesture { onTap?() }
-                .padding(.horizontal, 20)
+            // Card - fills available space with swipe gestures
+            ZStack {
+                ProfileCardView(profile: profile)
+                    .overlay(alignment: .leading) {
+                        if dragOffset.width < -30 {
+                            SwipeOverlay(label: "NOPE", color: .red, rotation: -15)
+                                .opacity(min(1, -dragOffset.width / 80))
+                        }
+                    }
+                    .overlay(alignment: .trailing) {
+                        if dragOffset.width > 30 {
+                            SwipeOverlay(label: "LIKE", color: Color.brand, rotation: 15)
+                                .opacity(min(1, dragOffset.width / 80))
+                        }
+                    }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .offset(dragOffset)
+            .rotationEffect(.degrees(Double(dragOffset.width) * rotationStrength))
+            .onTapGesture { onTap?() }
+            .gesture(
+                DragGesture(minimumDistance: 20)
+                    .onChanged { value in
+                        dragOffset = value.translation
+                        isDragging = true
+                    }
+                    .onEnded { value in
+                        let width = value.translation.width
+                        if width < -swipeThreshold {
+                            SoundEffectService.playPass()
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                dragOffset = CGSize(width: -500, height: value.translation.height * 0.5)
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                onPass()
+                                dragOffset = .zero
+                            }
+                        } else if width > swipeThreshold {
+                            SoundEffectService.playLike()
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                dragOffset = CGSize(width: 500, height: value.translation.height * 0.5)
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                onLike()
+                                dragOffset = .zero
+                            }
+                        } else {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                                dragOffset = .zero
+                            }
+                        }
+                        isDragging = false
+                    }
+            )
+            .padding(.horizontal, 20)
+            .onChange(of: buttonSwipeDirection) { _, dir in
+                guard let dir = dir else { return }
+                withAnimation(.easeOut(duration: 0.3)) {
+                    dragOffset = CGSize(width: dir * 500, height: 0)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    if dir < 0 { onPass() } else { onLike() }
+                    dragOffset = .zero
+                    buttonSwipeDirection = nil
+                }
+            }
             
             Spacer(minLength: 0)
             
             // Action buttons
             HStack(spacing: 24) {
-                Button(action: onPass) {
+                Button(action: { SoundEffectService.playPass(); buttonSwipeDirection = -1 }) {
                     Image(systemName: "xmark")
                         .font(.title2)
                         .fontWeight(.bold)
@@ -28,6 +96,7 @@ struct DiscoverCardStack: View {
                         .clipShape(Circle())
                 }
                 .foregroundStyle(Color.textOnDark)
+                .buttonStyle(.plain)
                 
                 Button(action: onMessage) {
                     HStack(spacing: 8) {
@@ -42,8 +111,9 @@ struct DiscoverCardStack: View {
                     .foregroundStyle(.white)
                     .cornerRadius(24)
                 }
+                .buttonStyle(.plain)
                 
-                Button(action: onLike) {
+                Button(action: { SoundEffectService.playLike(); buttonSwipeDirection = 1 }) {
                     Image(systemName: "heart.fill")
                         .font(.title2)
                         .frame(width: 56, height: 56)
@@ -51,6 +121,7 @@ struct DiscoverCardStack: View {
                         .foregroundStyle(.white)
                         .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
             }
             .padding(.bottom, 34)
         }
@@ -174,5 +245,24 @@ struct ProfileCardView: View {
         .aspectRatio(3/4, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.25), radius: 16, x: 0, y: 8)
+    }
+}
+
+private struct SwipeOverlay: View {
+    let label: String
+    let color: Color
+    let rotation: Double
+    
+    var body: some View {
+        Text(label)
+            .font(.system(size: 42, weight: .black))
+            .foregroundStyle(color)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(color, lineWidth: 5)
+            )
+            .padding(24)
+            .rotationEffect(.degrees(rotation))
+            .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
     }
 }

@@ -30,12 +30,20 @@ class AuthManager: ObservableObject {
         
         do {
             let session = try await supabase.auth.session
-            user = AppUser(id: session.user.id.uuidString, email: session.user.email ?? "")
-            await fetchProfile(userId: session.user.id.uuidString)
-            onboardingComplete = UserDefaults.standard.bool(forKey: "onboardingComplete")
+            let userId = session.user.id.uuidString
+            user = AppUser(id: userId, email: session.user.email ?? "")
+            await fetchProfile(userId: userId)
+            let explicit = UserDefaults.standard.bool(forKey: "onboardingComplete_\(userId)")
+            let hasProfile = profile != nil && (
+                (profile?.photoUrls?.isEmpty == false) ||
+                (profile?.interests?.isEmpty == false) ||
+                (profile?.location != nil && !(profile?.location ?? "").isEmpty)
+            )
+            onboardingComplete = explicit || hasProfile
         } catch {
             user = nil
             profile = nil
+            onboardingComplete = false
         }
         loading = false
     }
@@ -74,7 +82,6 @@ class AuthManager: ObservableObject {
         user = nil
         profile = nil
         onboardingComplete = false
-        UserDefaults.standard.removeObject(forKey: "onboardingComplete")
     }
     
     func deleteAccount() async throws {
@@ -227,7 +234,8 @@ class AuthManager: ObservableObject {
     }
     
     func completeOnboarding() {
+        guard let userId = user?.id else { return }
         onboardingComplete = true
-        UserDefaults.standard.set(true, forKey: "onboardingComplete")
+        UserDefaults.standard.set(true, forKey: "onboardingComplete_\(userId)")
     }
 }

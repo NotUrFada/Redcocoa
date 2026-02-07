@@ -21,7 +21,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Red Cocoa uses your location to show matches near you.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Red Cocoa needs access to your photos to add them to your profile.</string>
+	<string>Red Cocoa needs access to your photos and videos to add them to your profile.</string>
 	<key>SUPABASE_URL</key>
 	<string>https://gvbmhnbnvdexdvjxrhhz.supabase.co</string>
 	<key>SUPABASE_ANON_KEY</key>

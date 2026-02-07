@@ -6,6 +6,10 @@ struct DiscoverView: View {
     @State private var selectedProfileId: String?
     @State private var selectedChatId: String?
     @State private var showFilters = false
+    @State private var showMatchOverlay = false
+    @State private var matchedProfile: Profile?
+    var onProfileTap: (() -> Void)? = nil
+    var onMatch: (() -> Void)? = nil
     
     var body: some View {
         NavigationStack {
@@ -14,16 +18,32 @@ struct DiscoverView: View {
                 if viewModel.loading {
                     ProgressView("Loading profiles...")
                         .foregroundStyle(Color.textOnDark)
-                } else if viewModel.profiles.isEmpty {
+                } else if viewModel.profiles.isEmpty || viewModel.currentProfile == nil {
                     EmptyDiscoverView(onAdjustFilters: {})
                 } else if let profile = viewModel.currentProfile {
                     DiscoverCardStack(
                         profile: profile,
                         onPass: { viewModel.pass() },
-                        onLike: { viewModel.like { selectedChatId = profile.id } },
+                        onLike: { viewModel.like { matched in
+                            matchedProfile = matched
+                            showMatchOverlay = true
+                            onMatch?()
+                        } },
                         onMessage: { selectedChatId = profile.id },
                         onTap: { selectedProfileId = profile.id }
                     )
+                }
+                
+                if showMatchOverlay, let matched = matchedProfile {
+                    MatchOverlayView(
+                        matchedName: matched.name,
+                        onDismiss: {
+                            selectedChatId = matched.id
+                            showMatchOverlay = false
+                            matchedProfile = nil
+                        }
+                    )
+                    .transition(.opacity)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -45,7 +65,7 @@ struct DiscoverView: View {
                 FilterView()
             }
             .navigationDestination(item: $selectedProfileId) { id in
-                ProfileView(profileId: id, onOpenChat: { selectedChatId = id })
+                ProfileView(profileId: id, onOpenChat: { selectedChatId = id }, onMatch: { _ in onMatch?() })
             }
             .navigationDestination(item: $selectedChatId) { id in
                 ChatView(otherId: id)
@@ -54,36 +74,44 @@ struct DiscoverView: View {
         .task {
             await viewModel.load(userId: auth.user?.id ?? "")
         }
+        .onAppear {
+            if let userId = auth.user?.id { Task { await auth.fetchProfile(userId: userId) } }
+        }
     }
     
     @ViewBuilder
     private var profileAvatar: some View {
-        Group {
-            if let urlString = auth.profile?.primaryPhoto, let url = URL(string: urlString), !urlString.isEmpty {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure, .empty:
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 32))
-                            .foregroundStyle(Color.textMuted)
-                    @unknown default:
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 32))
-                            .foregroundStyle(Color.textMuted)
+        Button {
+            onProfileTap?()
+        } label: {
+            Group {
+                if let urlString = auth.profile?.primaryPhoto, let url = URL(string: urlString), !urlString.isEmpty {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure, .empty:
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundStyle(Color.textMuted)
+                        @unknown default:
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundStyle(Color.textMuted)
+                        }
                     }
+                } else {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(Color.textMuted)
                 }
-            } else {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(Color.textMuted)
             }
+            .frame(width: 36, height: 36)
+            .clipShape(Circle())
         }
-        .frame(width: 36, height: 36)
-        .clipShape(Circle())
+        .buttonStyle(.plain)
     }
 }
 

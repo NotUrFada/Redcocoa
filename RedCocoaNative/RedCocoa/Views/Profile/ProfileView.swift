@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     let profileId: String
     var onOpenChat: (() -> Void)?
+    var onMatch: ((Profile) -> Void)?
     @EnvironmentObject var auth: AuthManager
     @Environment(\.dismiss) var dismiss
     @State private var profile: Profile?
@@ -17,16 +18,14 @@ struct ProfileView: View {
                     .tint(Color.textOnDark)
             } else if let p = profile {
                 profileContent(p)
+            } else {
+                ContentUnavailableView("Profile unavailable", systemImage: "person.circle")
+                    .foregroundStyle(Color.textMuted)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left")
-                }
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button("Report", role: .destructive) { showReportMenu = true }
@@ -49,14 +48,7 @@ struct ProfileView: View {
     private func profileContent(_ p: Profile) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AsyncImage(url: URL(string: p.primaryPhoto ?? "")) { phase in
-                    switch phase {
-                    case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
-                    default: Rectangle().fill(Color.gray.opacity(0.2)).overlay { Image(systemName: "person.circle").font(.largeTitle) }
-                    }
-                }
-                .frame(height: 400)
-                .clipped()
+                profileMediaSection(p)
                 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -81,7 +73,7 @@ struct ProfileView: View {
                 .padding()
                 
                 HStack(spacing: 16) {
-                    Button { Task { await pass() } } label: {
+                    Button { SoundEffectService.playPass(); Task { await pass() } } label: {
                         Image(systemName: "xmark")
                             .font(.title2)
                             .foregroundStyle(Color.textOnDark)
@@ -89,7 +81,7 @@ struct ProfileView: View {
                             .background(Color.bgCard)
                             .clipShape(Circle())
                     }
-                    Button { Task { await like() } } label: {
+                    Button { SoundEffectService.playLike(); Task { await like() } } label: {
                         Image(systemName: "heart.fill")
                             .font(.title2)
                             .frame(width: 56, height: 56)
@@ -122,6 +114,38 @@ struct ProfileView: View {
         .background(Color.bgDark)
     }
     
+    @ViewBuilder
+    private func profileMediaSection(_ p: Profile) -> some View {
+        let photos = p.photoUrls ?? []
+        let videos = p.videoUrls ?? []
+        if !photos.isEmpty || !videos.isEmpty {
+            TabView {
+                ForEach(Array(photos.enumerated()), id: \.element) { _, urlString in
+                    AsyncImage(url: URL(string: urlString)) { phase in
+                        switch phase {
+                        case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
+                        default: Rectangle().fill(Color.gray.opacity(0.2)).overlay { Image(systemName: "person.circle").font(.largeTitle) }
+                        }
+                    }
+                    .frame(height: 400)
+                    .clipped()
+                }
+                ForEach(Array(videos.enumerated()), id: \.element) { _, urlString in
+                    VideoThumbnailView(url: urlString)
+                        .frame(height: 400)
+                        .clipped()
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .automatic))
+            .frame(height: 400)
+        } else {
+            Rectangle()
+                .fill(Color.gray.opacity(0.2))
+                .frame(height: 400)
+                .overlay { Image(systemName: "person.circle").font(.largeTitle) }
+        }
+    }
+    
     private func load() async {
         do {
             profile = try await APIService.getProfileById(profileId, userId: auth.user?.id)
@@ -138,11 +162,21 @@ struct ProfileView: View {
     }
     
     private func like() async {
-        guard let userId = auth.user?.id else { return }
+        guard let userId = auth.user?.id,
+              let p = profile else { return }
         let isMatch = (try? await APIService.likeProfile(userId: userId, likedId: profileId)) ?? false
         await MainActor.run {
-            if isMatch { onOpenChat?() }
-            dismiss()
+            if isMatch {
+                if let onMatch = onMatch {
+                    onMatch(p)
+                    dismiss()
+                } else {
+                    onOpenChat?()
+                    dismiss()
+                }
+            } else {
+                dismiss()
+            }
         }
     }
     

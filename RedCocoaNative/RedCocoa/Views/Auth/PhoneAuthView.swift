@@ -63,7 +63,7 @@ struct PhoneAuthView: View {
                     .font(.subheadline)
                     .foregroundStyle(Color.textMuted)
                 } else {
-                    TextField("Phone number", text: $phone)
+                    TextField("+15551234567", text: $phone)
                         .textFieldStyle(.plain)
                         .padding()
                         .background(Color.bgCard)
@@ -72,7 +72,7 @@ struct PhoneAuthView: View {
                         .keyboardType(.phonePad)
                         .textContentType(.telephoneNumber)
                     
-                    Text("We'll send you a 6-digit code via SMS")
+                    Text("Use +1 for US (e.g. +15551234567). We'll send a 6-digit code via SMS.")
                         .font(.caption)
                         .foregroundStyle(Color.textMuted)
                     

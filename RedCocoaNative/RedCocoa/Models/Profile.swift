@@ -7,6 +7,7 @@ struct Profile: Codable, Identifiable {
     var location: String?
     var birthDate: String?
     var photoUrls: [String]?
+    var videoUrls: [String]?
     var age: Int?
     var ethnicity: String?
     var hairColor: String?
@@ -24,6 +25,7 @@ struct Profile: Codable, Identifiable {
         case location
         case birthDate = "birth_date"
         case photoUrls = "photo_urls"
+        case videoUrls = "video_urls"
         case age
         case ethnicity
         case hairColor = "hair_color"

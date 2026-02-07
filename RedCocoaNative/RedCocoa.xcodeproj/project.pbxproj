@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		076E19F34E576846FE65F517 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = E15EE399C3B57A9A5F75124B /* User.swift */; };
 		0CD401861570A1AA28F6367D /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97FBD14A67EC7090C9078785 /* AuthManager.swift */; };
+		1C989DE43E4B5BABD20B157D /* MatchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518DE5BDB79E7E849A0E2DDA /* MatchOverlayView.swift */; };
 		1D3AB40DB237401E953BAAFA /* FilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851277F13F09CF8C797A08E8 /* FilterView.swift */; };
 		2CF6491EC23F0B71E7C96EAB /* LoopingVideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE9EF89840D93A2E142A853B /* LoopingVideoPlayerView.swift */; };
 		35E3AD6E2B72F12AAC82DFD0 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B3D93D8AD33390BA104624 /* MockData.swift */; };
@@ -49,6 +50,8 @@
 		F71C9D19C35B48565F3C95C4 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327FE55C9C108096C8B81EF9 /* FlowLayout.swift */; };
 		F8F4EC011AB637BF4030BB0B /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E863FC3F2BB61C8712AC0D67 /* APIService.swift */; };
 		FDE7311557691122F0D8658B /* ChatsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53FE7DDBFD2CD419D354ECD8 /* ChatsListView.swift */; };
+		VID0011557691122F0D8658B /* VideoThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VID0022557691122F0D8658C /* VideoThumbnailView.swift */; };
+		SFX0011557691122F0D8658B /* SoundEffectService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SFX0022557691122F0D8658C /* SoundEffectService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +67,7 @@
 		407F55133CF58BAF5F83C0BC /* ProfileOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileOptions.swift; sourceTree = "<group>"; };
 		4E0C0D206169BDD77C068532 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		4F692EBCC6FF7C9E55F22241 /* Color+Brand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Brand.swift"; sourceTree = "<group>"; };
+		518DE5BDB79E7E849A0E2DDA /* MatchOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchOverlayView.swift; sourceTree = "<group>"; };
 		53FE7DDBFD2CD419D354ECD8 /* ChatsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsListView.swift; sourceTree = "<group>"; };
 		53FF03ECCAD85F313418D14F /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
 		54D0609B047AF3CEF3605B0F /* Font+Brand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+Brand.swift"; sourceTree = "<group>"; };
@@ -95,6 +99,8 @@
 		E80043C1553B5077B23A3798 /* Inter-Thin.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Thin.ttf"; sourceTree = "<group>"; };
 		E863FC3F2BB61C8712AC0D67 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		F4421D21BABD5BBC6ABF0996 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
+		VID0022557691122F0D8658C /* VideoThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoThumbnailView.swift; sourceTree = "<group>"; };
+		SFX0022557691122F0D8658C /* SoundEffectService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundEffectService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,6 +150,7 @@
 				2405DF2D91355AE2DE8F35DA /* DiscoverView.swift */,
 				03644F21FC8B12B93D995174 /* DiscoverViewModel.swift */,
 				851277F13F09CF8C797A08E8 /* FilterView.swift */,
+				518DE5BDB79E7E849A0E2DDA /* MatchOverlayView.swift */,
 			);
 			path = Discover;
 			sourceTree = "<group>";
@@ -199,6 +206,7 @@
 				86CC190F7CF623DCA7EC386B /* AppleSignInDelegate.swift */,
 				97FBD14A67EC7090C9078785 /* AuthManager.swift */,
 				F4421D21BABD5BBC6ABF0996 /* LocationManager.swift */,
+				SFX0022557691122F0D8658C /* SoundEffectService.swift */,
 				53FF03ECCAD85F313418D14F /* SupabaseService.swift */,
 				E1AACFCA5582EA321900F6A9 /* UserPreferencesService.swift */,
 			);
@@ -239,6 +247,7 @@
 			isa = PBXGroup;
 			children = (
 				5CBE131D3C98468EAD124CD0 /* ProfileView.swift */,
+				VID0022557691122F0D8658C /* VideoThumbnailView.swift */,
 			);
 			path = Profile;
 			sourceTree = "<group>";
@@ -407,6 +416,7 @@
 				5D83EE0E3E3F046B452F624D /* LoginView.swift in Sources */,
 				2CF6491EC23F0B71E7C96EAB /* LoopingVideoPlayerView.swift in Sources */,
 				53057B8E4088F759F18085C9 /* MainTabView.swift in Sources */,
+				1C989DE43E4B5BABD20B157D /* MatchOverlayView.swift in Sources */,
 				35E3AD6E2B72F12AAC82DFD0 /* MockData.swift in Sources */,
 				7CFAFECB45C1FA7BB33F2E86 /* OnboardingView.swift in Sources */,
 				99213C0D1F4290F008C90ED6 /* PhoneAuthView.swift in Sources */,
@@ -416,9 +426,11 @@
 				861CCF5272120D4BE5925248 /* ProfileOptions.swift in Sources */,
 				66C06820B3A328894DF305DA /* ProfileSetupView.swift in Sources */,
 				8541E56D8955A49C778C945F /* ProfileView.swift in Sources */,
+				VID0011557691122F0D8658B /* VideoThumbnailView.swift in Sources */,
 				5A0C57843547A52D1E34F8B5 /* RedCocoaApp.swift in Sources */,
 				F121F4161713DA5ED299EE7E /* RootView.swift in Sources */,
 				AD44102BEF79995E33DDB4CA /* SettingsView.swift in Sources */,
+				SFX0011557691122F0D8658B /* SoundEffectService.swift in Sources */,
 				EA602AB2E51BF153CF1CDDDA /* SignUpView.swift in Sources */,
 				88433C4FD798C1C4FFA4ABC1 /* SplashView.swift in Sources */,
 				4E2F6FC94CB7B8DA735B32F4 /* SupabaseService.swift in Sources */,

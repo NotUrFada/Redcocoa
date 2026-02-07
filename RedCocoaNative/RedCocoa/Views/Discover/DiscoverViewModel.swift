@@ -34,30 +34,29 @@ class DiscoverViewModel: ObservableObject {
     
     func pass() {
         guard let profile = currentProfile else { advance(); return }
+        advance()
         if let userId = userId, !userId.isEmpty, userId != "demo" {
             Task {
                 try? await APIService.passOnProfile(userId: userId, passedId: profile.id)
-                await MainActor.run { advance() }
             }
         } else {
             passedIds.insert(profile.id)
-            advance()
         }
     }
     
-    func like(onMatch: (() -> Void)? = nil) {
+    func like(onMatch: ((Profile) -> Void)? = nil) {
         guard let profile = currentProfile else { advance(); return }
-        guard let userId = userId, !userId.isEmpty, userId != "demo" else {
-            advance()
-            onMatch?()
-            return
-        }
-        Task {
-            let isMatch = (try? await APIService.likeProfile(userId: userId, likedId: profile.id)) ?? false
-            await MainActor.run {
-                advance()
-                if isMatch { onMatch?() }
+        let uid = userId
+        advance()
+        if let userId = uid, !userId.isEmpty, userId != "demo" {
+            Task {
+                let isMatch = (try? await APIService.likeProfile(userId: userId, likedId: profile.id)) ?? false
+                await MainActor.run {
+                    if isMatch { onMatch?(profile) }
+                }
             }
+        } else {
+            onMatch?(profile)
         }
     }
     

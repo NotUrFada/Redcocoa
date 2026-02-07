@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ChatsListView: View {
+    var selectedTab: Int
+    var refreshTrigger: UUID = UUID()
     @EnvironmentObject var auth: AuthManager
     @State private var chats: [ChatPreview] = []
     @State private var loading = true
@@ -67,7 +69,11 @@ struct ChatsListView: View {
             .navigationDestination(item: $selectedChatId) { id in
                 ChatView(otherId: id)
             }
-            .task { await load() }
+            .task(id: refreshTrigger) { await load() }
+            .task(id: selectedTab) { if selectedTab == 2 { await load() } }
+            .onChange(of: selectedChatId) { _, new in if new == nil { Task { await load() } } }
+            .onAppear { if selectedTab == 2 { Task { await load() } } }
+            .refreshable { await load() }
         }
     }
     

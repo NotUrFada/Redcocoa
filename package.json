@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "supabase:link": "supabase link --project-ref gvbmhnbnvdexdvjxrhhz",
+    "supabase:push": "supabase db push",
     "dev:mobile": "vite --host",
     "build": "vite build",
     "lint": "eslint .",

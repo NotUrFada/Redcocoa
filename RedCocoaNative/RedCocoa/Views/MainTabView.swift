@@ -1,11 +1,16 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let chatsDidUpdate = Notification.Name("chatsDidUpdate")
+}
+
 struct MainTabView: View {
     @State private var selectedTab = 0
+    @State private var chatsRefreshTrigger = UUID()
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            DiscoverView()
+            DiscoverView(onProfileTap: { selectedTab = 3 }, onMatch: { chatsRefreshTrigger = UUID() })
                 .tabItem {
                     Image(systemName: "square.grid.2x2")
                     Text("Discover")
@@ -19,7 +24,7 @@ struct MainTabView: View {
                 }
                 .tag(1)
             
-            ChatsListView()
+            ChatsListView(selectedTab: selectedTab, refreshTrigger: chatsRefreshTrigger)
                 .tabItem {
                     Image(systemName: "bubble.left.and.bubble.right")
                     Text("Chats")
@@ -35,5 +40,11 @@ struct MainTabView: View {
         }
         .tint(.brand)
         .background(Color.bgDark)
+        .onChange(of: selectedTab) { _, new in
+            if new == 2 { chatsRefreshTrigger = UUID() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .chatsDidUpdate)) { _ in
+            chatsRefreshTrigger = UUID()
+        }
     }
 }

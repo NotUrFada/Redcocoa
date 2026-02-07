@@ -8,6 +8,11 @@ struct ProfileSetupView: View {
     @StateObject private var locationManager = LocationManager()
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var photoImages: [UIImage] = []
+    @State private var existingPhotoUrls: [String] = []
+    @State private var videoItems: [PhotosPickerItem] = []
+    @State private var videoDataItems: [(Data, String)] = []
+    @State private var existingVideoUrls: [String] = []
+    @State private var pickerResetId = UUID()
     @State private var location: String = ""
     @State private var selectedInterests: Set<String> = []
     @State private var ethnicity: String = ""
@@ -27,17 +32,35 @@ struct ProfileSetupView: View {
                     .fontWeight(.bold)
                     .foregroundStyle(Color.textOnDark)
                 
-                // Photos section
+                // Photos & Videos section
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Add your photos")
+                    Text("Add your photos & videos")
                         .font(.headline)
                         .foregroundStyle(Color.textOnDark)
-                    Text("Profiles with photos get more matches. Add at least 1.")
+                    Text("Profiles with photos get more matches. Add at least 1 photo.")
                         .font(.subheadline)
                         .foregroundStyle(Color.textMuted)
                     
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        ForEach(0..<photoImages.count, id: \.self) { index in
+                        ForEach(Array(existingPhotoUrls.enumerated()), id: \.element) { index, urlString in
+                            AsyncImage(url: URL(string: urlString)) { phase in
+                                if case .success(let img) = phase {
+                                    ZStack(alignment: .topTrailing) {
+                                        img.resizable().aspectRatio(contentMode: .fill)
+                                            .frame(height: 120).clipped().cornerRadius(12)
+                                        Button { existingPhotoUrls.remove(at: index) } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundStyle(.white)
+                                                .background(Circle().fill(Color.black.opacity(0.5)))
+                                        }
+                                        .padding(6)
+                                    }
+                                } else {
+                                    RoundedRectangle(cornerRadius: 12).fill(Color.bgCard).frame(height: 120)
+                                }
+                            }
+                        }
+                        ForEach(Array(0..<photoImages.count), id: \.self) { index in
                             ZStack(alignment: .topTrailing) {
                                 Image(uiImage: photoImages[index])
                                     .resizable()
@@ -45,9 +68,7 @@ struct ProfileSetupView: View {
                                     .frame(height: 120)
                                     .clipped()
                                     .cornerRadius(12)
-                                Button {
-                                    photoImages.remove(at: index)
-                                } label: {
+                                Button { photoImages.remove(at: index) } label: {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundStyle(.white)
                                         .background(Circle().fill(Color.black.opacity(0.5)))
@@ -55,10 +76,37 @@ struct ProfileSetupView: View {
                                 .padding(6)
                             }
                         }
-                        if photoImages.count < 6 {
+                        ForEach(Array(existingVideoUrls.enumerated()), id: \.element) { index, urlString in
+                            ZStack(alignment: .topTrailing) {
+                                VideoThumbnailView(url: urlString)
+                                    .frame(height: 120).clipped().cornerRadius(12)
+                                Button { existingVideoUrls.remove(at: index) } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.white)
+                                        .background(Circle().fill(Color.black.opacity(0.5)))
+                                }
+                                .padding(6)
+                            }
+                        }
+                        ForEach(Array(0..<videoDataItems.count), id: \.self) { index in
+                            ZStack(alignment: .topTrailing) {
+                                RoundedRectangle(cornerRadius: 12).fill(Color.bgCard).frame(height: 120)
+                                    .overlay { Image(systemName: "video.fill").font(.title).foregroundStyle(Color.textMuted) }
+                                Button { videoDataItems.remove(at: index) } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.white)
+                                        .background(Circle().fill(Color.black.opacity(0.5)))
+                                }
+                                .padding(6)
+                            }
+                        }
+                        let photoCount = existingPhotoUrls.count + photoImages.count
+                        let videoCount = existingVideoUrls.count + videoDataItems.count
+                        let totalSlots = 9
+                        if photoCount + videoCount < totalSlots {
                             PhotosPicker(
                                 selection: $photoItems,
-                                maxSelectionCount: 6 - photoImages.count,
+                                maxSelectionCount: totalSlots - photoCount - videoCount,
                                 matching: .images
                             ) {
                                 RoundedRectangle(cornerRadius: 12)
@@ -66,28 +114,56 @@ struct ProfileSetupView: View {
                                     .frame(height: 120)
                                     .overlay {
                                         VStack(spacing: 8) {
-                                            Image(systemName: "plus.circle")
-                                                .font(.title)
-                                                .foregroundStyle(Color.textMuted)
-                                            Text(photoImages.isEmpty ? "Add photo" : "+")
-                                                .font(.caption)
-                                                .foregroundStyle(Color.textMuted)
+                                            Image(systemName: "plus.circle").font(.title).foregroundStyle(Color.textMuted)
+                                            Text("Add photo").font(.caption).foregroundStyle(Color.textMuted)
                                         }
                                     }
                             }
+                            .id("photo-\(pickerResetId)")
                             .onChange(of: photoItems) { _, newItems in
                                 Task {
                                     for item in newItems {
                                         if let data = try? await item.loadTransferable(type: Data.self),
                                            let img = UIImage(data: data) {
                                             await MainActor.run {
-                                                if photoImages.count < 6 {
+                                                if photoImages.count + existingPhotoUrls.count < 6 {
                                                     photoImages.append(img)
                                                 }
                                             }
                                         }
                                     }
-                                    await MainActor.run { photoItems = [] }
+                                    await MainActor.run { photoItems = []; pickerResetId = UUID() }
+                                }
+                            }
+                            PhotosPicker(
+                                selection: $videoItems,
+                                maxSelectionCount: min(3, totalSlots - photoCount - videoCount),
+                                matching: .videos
+                            ) {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.textMuted, style: StrokeStyle(lineWidth: 2, dash: [6]))
+                                    .frame(height: 120)
+                                    .overlay {
+                                        VStack(spacing: 8) {
+                                            Image(systemName: "plus.circle").font(.title).foregroundStyle(Color.textMuted)
+                                            Text("Add video").font(.caption).foregroundStyle(Color.textMuted)
+                                        }
+                                    }
+                            }
+                            .id("video-\(pickerResetId)")
+                            .onChange(of: videoItems) { _, newItems in
+                                Task {
+                                    for item in newItems {
+                                        if let data = try? await item.loadTransferable(type: Data.self) {
+                                            let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "mp4"
+                                            await MainActor.run {
+                                                if videoDataItems.count + existingVideoUrls.count < 3 {
+                                                    videoDataItems.append((data, ext))
+                                                }
+                                            }
+                                        }
+                                    }
+                                    await MainActor.run { videoItems = []; pickerResetId = UUID() }
                                 }
                             }
                         }
@@ -250,7 +326,15 @@ struct ProfileSetupView: View {
                                 .foregroundStyle(Color.textMuted)
                             TextField("Your answer", text: Binding(
                                 get: { promptResponses[prompt.id] ?? "" },
-                                set: { promptResponses[prompt.id] = $0.isEmpty ? nil : $0 }
+                                set: { newValue in
+                                    var updated = promptResponses
+                                    if newValue.isEmpty {
+                                        updated.removeValue(forKey: prompt.id)
+                                    } else {
+                                        updated[prompt.id] = newValue
+                                    }
+                                    promptResponses = updated
+                                }
                             ))
                             .textFieldStyle(.plain)
                             .padding()
@@ -283,7 +367,7 @@ struct ProfileSetupView: View {
                 .foregroundStyle(.white)
                 .cornerRadius(24)
                 .fontWeight(.semibold)
-                .disabled(saving || photoImages.isEmpty)
+                .disabled(saving)
                 
                 Button("Skip for now") {
                     onComplete()
@@ -301,6 +385,25 @@ struct ProfileSetupView: View {
                 location = city
             }
         }
+        .task {
+            await loadExistingProfile()
+        }
+    }
+    
+    private func loadExistingProfile() async {
+        guard let profile = auth.profile else { return }
+        await MainActor.run {
+            if let loc = profile.location { location = loc }
+            if let ints = profile.interests { selectedInterests = Set(ints) }
+            if let eth = profile.ethnicity { ethnicity = eth }
+            if let hair = profile.hairColor { hairColor = hair }
+            if let humor = profile.humorPreference { humorPreference = humor }
+            if let tone = profile.toneVibe { toneVibe = tone }
+            if let bgs = profile.badges { selectedBadges = Set(bgs) }
+            if let pr = profile.promptResponses { promptResponses = pr }
+            existingPhotoUrls = profile.photoUrls ?? []
+            existingVideoUrls = profile.videoUrls ?? []
+        }
     }
     
     private func save() async {
@@ -308,21 +411,22 @@ struct ProfileSetupView: View {
         saving = true
         error = nil
         do {
-            if !photoImages.isEmpty {
-                var photoUrls: [String] = []
-                for (_, img) in photoImages.enumerated() {
-                    if let data = img.jpegData(compressionQuality: 0.8) {
-                        let url = try await APIService.uploadProfilePhoto(userId: userId, imageData: data)
-                        photoUrls.append(url)
-                    }
-                }
-                if !photoUrls.isEmpty {
-                    try await APIService.setProfilePhotos(userId: userId, photoUrls: photoUrls)
+            var photoUrls = existingPhotoUrls
+            for img in photoImages {
+                if let data = img.jpegData(compressionQuality: 0.8) {
+                    let url = try await APIService.uploadProfilePhoto(userId: userId, imageData: data)
+                    photoUrls.append(url)
                 }
             }
+            var videoUrls = existingVideoUrls
+            for (data, ext) in videoDataItems {
+                let url = try await APIService.uploadProfileVideo(userId: userId, videoData: data, fileExtension: ext)
+                videoUrls.append(url)
+            }
+            try await APIService.setProfileMedia(userId: userId, photoUrls: photoUrls, videoUrls: videoUrls, name: auth.profile?.name ?? "User")
             let filtered = promptResponses.filter { !$0.value.isEmpty }
             let locToUse = location.isEmpty ? locationManager.cityName : location
-            try await APIService.updateProfile(
+            try await APIService.upsertProfile(
                 userId: userId,
                 name: auth.profile?.name ?? "User",
                 bio: auth.profile?.bio,

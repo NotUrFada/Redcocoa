@@ -26,10 +26,11 @@ struct RootView: View {
         .background(Color.bgDark)
         .animation(.easeInOut(duration: 0.3), value: splashFinished)
         .animation(.easeInOut(duration: 0.3), value: hasSeenWelcome)
-        .task(id: splashFinished) {
-            guard !splashFinished else { return }
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            splashFinished = true
+        .onAppear {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                splashFinished = true
+            }
         }
     }
 }
