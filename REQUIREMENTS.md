@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-**Red Cocoa** is a dating app for iOS and web, built with React, Vite, Capacitor, and Supabase.
+**Red Cocoa** is a dating app for iOS only, built with React, Vite, Capacitor, and Supabase.
 
 ---
 
@@ -62,9 +62,10 @@
 - **Forgot password** – Email reset link
 - **Email confirmation** – Redirect to `/auth/callback`
 - **Redirect URLs** – Must be configured in Supabase Auth for:
-  - `http://localhost:5173/auth/callback`
-  - `http://localhost:5173/reset-password`
-  - Production URLs (e.g. `https://yourdomain.com/auth/callback`, `https://yourdomain.com/reset-password`)
+  - `capacitor://localhost/#/auth/callback` (iOS app)
+  - `capacitor://localhost/#/reset-password` (iOS app)
+  - `http://localhost:5173/#/auth/callback` (dev in browser)
+  - `http://localhost:5173/#/reset-password` (dev in browser)
 
 ---
 
@@ -156,13 +157,7 @@
 
 ## 8. Deployment Requirements
 
-### 8.1 Web
-- Build: `npm run build`
-- Deploy `dist/` to Vercel, Netlify, or similar
-- Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as build env vars
-- Add production URLs to Supabase redirect URLs
-
-### 8.2 iOS
+### 8.1 iOS (only)
 - Build: `npm run ios`
 - Configure in Xcode (Team, Bundle ID, Signing)
 - Archive and upload to App Store Connect

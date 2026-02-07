@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import AppLayout from './components/AppLayout';
 import Discover from './pages/Discover';
@@ -45,7 +45,7 @@ function OnboardingRoute({ children }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -79,6 +79,6 @@ export default function App() {
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/blocked" element={<ProtectedRoute><Blocked /></ProtectedRoute>} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

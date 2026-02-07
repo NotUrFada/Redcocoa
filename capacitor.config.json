@@ -2,9 +2,6 @@
   "appId": "com.redcocoa.app",
   "appName": "Red Cocoa",
   "webDir": "dist",
-  "server": {
-    "androidScheme": "https"
-  },
   "ios": {
     "contentInset": "automatic"
   },

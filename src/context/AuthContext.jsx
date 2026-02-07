@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
         setProfile({ id: 'demo', name: metadata.name || email.split('@')[0] });
         return { user: { id: 'demo', email }, isNewUser: true };
       }
-      const redirectTo = `${window.location.origin}/auth/callback`;
+      const redirectTo = `${window.location.origin}/#/auth/callback`;
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -124,7 +124,7 @@ export function AuthProvider({ children }) {
     },
     resetPasswordForEmail: async (email) => {
       if (!hasSupabase) return;
-      const redirectTo = `${window.location.origin}/reset-password`;
+      const redirectTo = `${window.location.origin}/#/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
       if (error) throw error;
     },

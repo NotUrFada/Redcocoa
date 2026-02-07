@@ -29,26 +29,17 @@ Concrete tasks to complete. Check off each when done.
 ## Supabase Auth URLs
 
 - [ ] Supabase Dashboard → Authentication → URL Configuration → Redirect URLs
-- [ ] Add `http://localhost:5173/auth/callback`
-- [ ] Add `http://localhost:5173/reset-password`
-- [ ] Add production callback URL (e.g. `https://yourdomain.com/auth/callback`) when you have a production URL
-- [ ] Add production reset URL (e.g. `https://yourdomain.com/reset-password`) when you have a production URL
+- [ ] Add `capacitor://localhost/#/auth/callback` (iOS app)
+- [ ] Add `capacitor://localhost/#/reset-password` (iOS app)
+- [ ] Add `http://localhost:5173/#/auth/callback` (dev in browser)
+- [ ] Add `http://localhost:5173/#/reset-password` (dev in browser)
 
 ---
 
 ## Privacy Policy (Required for App Store)
 
-- [ ] Host `public/privacy.html` at a public URL (e.g. Vercel, Netlify, GitHub Pages)
+- [ ] Host `public/privacy.html` at a public URL (e.g. GitHub Pages, Vercel, Netlify)
 - [ ] Record the URL for App Store Connect
-
----
-
-## Web Deployment (Optional)
-
-- [ ] Run `npm run build`
-- [ ] Deploy the `dist/` folder to Vercel, Netlify, or your host
-- [ ] Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as build environment variables in your host
-- [ ] Add the production URL to Supabase redirect URLs
 
 ---
 
