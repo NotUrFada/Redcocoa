@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// First-open welcome screen. Add your video as "WelcomeVideo.mp4" to the app target
-/// ( drag into Xcode project, ensure "Copy items if needed" and target membership are checked ).
+/// First-open welcome screen with background image.
 struct WelcomeView: View {
     var onGetStarted: () -> Void
     
@@ -9,15 +8,10 @@ struct WelcomeView: View {
         ZStack {
             Color.bgDark
                 .ignoresSafeArea()
-            // Video background (add WelcomeVideo.mp4 to your project)
-            if Bundle.main.url(forResource: "WelcomeVideo", withExtension: "mp4") != nil {
-                LoopingVideoPlayerView()
-                    .ignoresSafeArea()
-            } else {
-                // Fallback when video not yet added
-                Color.bgDark
-                    .ignoresSafeArea()
-            }
+            Image("WelcomeBackground")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .ignoresSafeArea()
             
             // Gradient overlay for readability
             LinearGradient(
