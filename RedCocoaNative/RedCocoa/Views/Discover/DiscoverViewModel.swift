@@ -19,15 +19,27 @@ class DiscoverViewModel: ObservableObject {
         self.userId = userId
         guard !userId.isEmpty, userId != "demo" else {
             profiles = MockData.profiles
+            currentIndex = 0
             loading = false
             return
         }
         
+        let hairFilter = Set(UserDefaults.standard.string(forKey: "filterHairColors")?
+            .split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } ?? [])
+        let ethnicityFilter = Set(UserDefaults.standard.string(forKey: "filterEthnicities")?
+            .split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } ?? [])
+        
         do {
-            profiles = try await APIService.getDiscoveryProfiles(userId: userId)
+            profiles = try await APIService.getDiscoveryProfiles(
+                userId: userId,
+                hairColorFilter: hairFilter,
+                ethnicityFilter: ethnicityFilter
+            )
+            currentIndex = 0
             loading = false
         } catch {
             profiles = MockData.profiles
+            currentIndex = 0
             loading = false
         }
     }

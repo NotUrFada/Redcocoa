@@ -118,6 +118,34 @@ CREATE POLICY "Users can send messages in their matches" ON public.messages
     )
   );
 
+-- 6b. Call invites RLS - caller/callee in a match can manage call invites
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'call_invites') THEN
+    ALTER TABLE public.call_invites ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Caller can create call invite" ON public.call_invites;
+    CREATE POLICY "Caller can create call invite" ON public.call_invites
+      FOR INSERT WITH CHECK (
+        auth.uid()::text = caller_id::text
+        AND EXISTS (
+          SELECT 1 FROM public.matches m
+          WHERE m.id::text = match_id::text
+          AND (auth.uid()::text = m.user1_id::text OR auth.uid()::text = m.user2_id::text)
+        )
+      );
+    DROP POLICY IF EXISTS "Caller and callee can view call invites" ON public.call_invites;
+    CREATE POLICY "Caller and callee can view call invites" ON public.call_invites
+      FOR SELECT USING (
+        auth.uid()::text = caller_id::text OR auth.uid()::text = callee_id::text
+      );
+    DROP POLICY IF EXISTS "Caller and callee can update call invites" ON public.call_invites;
+    CREATE POLICY "Caller and callee can update call invites" ON public.call_invites
+      FOR UPDATE USING (
+        auth.uid()::text = caller_id::text OR auth.uid()::text = callee_id::text
+      );
+  END IF;
+END $$;
+
 -- 7. Likes, passed_users, blocked_users (if tables exist)
 DO $$
 BEGIN

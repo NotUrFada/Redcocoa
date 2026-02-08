@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct LikesView: View {
+    var refreshTrigger: UUID = UUID()
+    var onLikesCountChanged: ((Int) -> Void)? = nil
     @EnvironmentObject var auth: AuthManager
     @State private var likes: [LikeWithProfile] = []
     @State private var loading = true
@@ -110,14 +112,17 @@ struct LikesView: View {
                     ChatView(otherId: id)
                 }
                 .onAppear { Task { await load() } }
+                .task(id: refreshTrigger) { await load() }
                 
                 if showMatchOverlay, let matched = matchedProfile {
                     MatchOverlayView(
                         matchedName: matched.name,
                         onDismiss: {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                showMatchOverlay = false
+                                matchedProfile = nil
+                            }
                             NotificationCenter.default.post(name: .openChatFromMatch, object: matched.id)
-                            showMatchOverlay = false
-                            matchedProfile = nil
                         }
                     )
                     .transition(.opacity)
@@ -129,8 +134,14 @@ struct LikesView: View {
     private func load() async {
         do {
             likes = try await APIService.getLikes(userId: auth.user?.id ?? "")
+            await MainActor.run {
+                onLikesCountChanged?(likes.count)
+            }
         } catch {
             likes = MockData.profiles.prefix(2).map { LikeWithProfile(profile: $0, status: "Liked you", isMatch: false) }
+            await MainActor.run {
+                onLikesCountChanged?(likes.count)
+            }
         }
         loading = false
     }

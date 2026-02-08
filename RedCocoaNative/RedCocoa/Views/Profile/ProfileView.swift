@@ -14,17 +14,20 @@ struct ProfileView: View {
     var body: some View {
         Group {
             if loading {
-                ProgressView()
-                    .tint(Color.textOnDark)
+                Color.bgDark
+                    .overlay { ProgressView().tint(Color.textOnDark) }
             } else if let p = profile {
                 profileContent(p)
+                    .smoothAppear()
             } else {
                 ContentUnavailableView("Profile unavailable", systemImage: "person.circle")
                     .foregroundStyle(Color.textMuted)
+                    .smoothAppear()
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -46,103 +49,204 @@ struct ProfileView: View {
     
     @ViewBuilder
     private func profileContent(_ p: Profile) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                profileMediaSection(p)
+        GeometryReader { geo in
+            let photoHeight = geo.size.height * 0.78
+            VStack(spacing: 0) {
+                profileMediaSection(p, height: photoHeight)
+                    .frame(height: photoHeight)
                 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(p.name).font(.title2).fontWeight(.bold).foregroundStyle(Color.textOnDark)
-                        if let age = p.displayAge {
-                            Text("• \(age)").foregroundStyle(Color.textMuted)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text(p.name)
+                                    .font(.system(size: 26, weight: .bold))
+                                    .foregroundStyle(Color.textOnDark)
+                                if let age = p.displayAge {
+                                    Text("·")
+                                        .font(.system(size: 22, weight: .medium))
+                                        .foregroundStyle(Color.textMuted)
+                                    Text("\(age)")
+                                        .font(.system(size: 22, weight: .medium))
+                                        .foregroundStyle(Color.textMuted)
+                                }
+                            }
+                            if let loc = p.location, !loc.isEmpty {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "mappin.circle.fill")
+                                        .font(.caption)
+                                    Text(loc)
+                                        .font(.subheadline)
+                                }
+                                .foregroundStyle(Color.textMuted)
+                            }
                         }
-                    }
-                    if let loc = p.location { Text(loc).font(.subheadline).foregroundStyle(Color.textMuted) }
-                    if let bio = p.bio { Text(bio).font(.body).foregroundStyle(Color.textOnDark).padding(.top, 4) }
-                    if let responses = p.promptResponses, !responses.isEmpty {
-                        ForEach(ProfileOptions.allPrompts.filter { responses[$0.id] != nil }, id: \.id) { prompt in
-                            if let answer = responses[prompt.id], !answer.isEmpty {
-                                Text(prompt.text.replacingOccurrences(of: "___", with: answer))
-                                    .font(.subheadline)
-                                    .foregroundStyle(Color.textMuted)
-                                    .padding(.top, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if let interests = p.interests, !interests.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(interests.prefix(6), id: \.self) { interest in
+                                        Text(interest)
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 8)
+                                            .background(Color.bgCard.opacity(0.9))
+                                            .foregroundStyle(Color.textOnDark)
+                                            .cornerRadius(18)
+                                    }
+                                }
+                            }
+                        }
+
+                        if let bio = p.bio, !bio.isEmpty {
+                            Text(bio)
+                                .font(.system(size: 16, weight: .regular))
+                                .lineSpacing(6)
+                                .foregroundStyle(Color.textOnDark.opacity(0.95))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        if let responses = p.promptResponses, !responses.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(ProfileOptions.allPrompts.filter { responses[$0.id] != nil }, id: \.id) { prompt in
+                                    if let answer = responses[prompt.id], !answer.isEmpty {
+                                        Text(prompt.text.replacingOccurrences(of: "___", with: answer))
+                                            .font(.subheadline)
+                                            .foregroundStyle(Color.textMuted)
+                                    }
+                                }
                             }
                         }
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 28)
+                    .padding(.bottom, 32)
                 }
-                .padding()
-                
-                HStack(spacing: 16) {
-                    Button { SoundEffectService.playPass(); Task { await pass() } } label: {
-                        Image(systemName: "xmark")
-                            .font(.title2)
-                            .foregroundStyle(Color.textOnDark)
-                            .frame(width: 56, height: 56)
-                            .background(Color.bgCard)
-                            .clipShape(Circle())
-                    }
-                    Button { SoundEffectService.playLike(); Task { await like() } } label: {
-                        Image(systemName: "heart.fill")
-                            .font(.title2)
-                            .frame(width: 56, height: 56)
-                            .background(Color.brand)
-                            .foregroundStyle(.white)
-                            .clipShape(Circle())
-                    }
-                    Button {
-                        if let onOpenChat = onOpenChat { onOpenChat() }
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Image(systemName: "bubble.left")
-                            Text("Message")
-                        }
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 14)
-                        .background(Color.brand)
-                        .foregroundStyle(.white)
-                        .cornerRadius(24)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
+                .background(Color.bgDark)
             }
         }
-        .scrollContentBackground(.hidden)
+        .ignoresSafeArea(edges: .top)
         .background(Color.bgDark)
     }
     
     @ViewBuilder
-    private func profileMediaSection(_ p: Profile) -> some View {
+    private func profileMediaSection(_ p: Profile, height: CGFloat) -> some View {
         let photos = p.photoUrls ?? []
         let videos = p.videoUrls ?? []
         if !photos.isEmpty || !videos.isEmpty {
             TabView {
                 ForEach(Array(photos.enumerated()), id: \.element) { _, urlString in
-                    AsyncImage(url: URL(string: urlString)) { phase in
-                        switch phase {
-                        case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
-                        default: Rectangle().fill(Color.gray.opacity(0.2)).overlay { Image(systemName: "person.circle").font(.largeTitle) }
+                    ZStack {
+                        AsyncImage(url: URL(string: urlString)) { phase in
+                            switch phase {
+                            case .success(let img):
+                                img
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            default:
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .overlay { Image(systemName: "person.circle").font(.system(size: 80)) }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                        .overlay {
+                            RadialGradient(
+                                colors: [
+                                    Color.clear,
+                                    Color.black.opacity(0.05),
+                                    Color.black.opacity(0.15),
+                                    Color.black.opacity(0.35)
+                                ],
+                                center: .center,
+                                startRadius: 80,
+                                endRadius: 450
+                            )
+                        }
+                        .overlay {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0),
+                                    .init(color: .clear, location: 0.42),
+                                    .init(color: Color.bgDark.opacity(0.6), location: 0.58),
+                                    .init(color: Color.bgDark, location: 0.72)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        }
+                        .overlay(alignment: .top) {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: Color.bgDark, location: 0),
+                                    .init(color: Color.bgDark.opacity(0.8), location: 0.25),
+                                    .init(color: Color.bgDark.opacity(0.3), location: 0.45),
+                                    .init(color: .clear, location: 0.65)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 180)
+                            .allowsHitTesting(false)
                         }
                     }
-                    .frame(height: 400)
-                    .clipped()
                 }
                 ForEach(Array(videos.enumerated()), id: \.element) { _, urlString in
-                    VideoThumbnailView(url: urlString)
-                        .frame(height: 400)
-                        .clipped()
+                    ZStack {
+                        VideoThumbnailView(url: urlString)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .clipped()
+                    }
+                    .overlay {
+                        RadialGradient(
+                            colors: [
+                                Color.clear,
+                                Color.black.opacity(0.05),
+                                Color.black.opacity(0.15),
+                                Color.black.opacity(0.35)
+                            ],
+                            center: .center,
+                            startRadius: 80,
+                            endRadius: 450
+                        )
+                    }
+                    .overlay {
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: .clear, location: 0.42),
+                                .init(color: Color.bgDark.opacity(0.6), location: 0.58),
+                                .init(color: Color.bgDark, location: 0.72)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                    .overlay(alignment: .top) {
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.bgDark, location: 0),
+                                .init(color: Color.bgDark.opacity(0.8), location: 0.25),
+                                .init(color: Color.bgDark.opacity(0.3), location: 0.45),
+                                .init(color: .clear, location: 0.65)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: 180)
+                        .allowsHitTesting(false)
+                    }
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .automatic))
-            .frame(height: 400)
         } else {
             Rectangle()
                 .fill(Color.gray.opacity(0.2))
-                .frame(height: 400)
-                .overlay { Image(systemName: "person.circle").font(.largeTitle) }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay { Image(systemName: "person.circle").font(.system(size: 80)).foregroundStyle(Color.textMuted) }
         }
     }
     

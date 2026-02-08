@@ -15,6 +15,13 @@ struct ChatView: View {
     @State private var refreshTimer: Timer?
     @State private var otherIsTyping = false
     @State private var typingDebounceTask: Task<Void, Never>?
+    @State private var showVoiceRecorder = false
+    @State private var callError: String?
+    @State private var showInCallView = false
+    @State private var activeCallIsVideo = false
+    @State private var incomingCall: CallInvite?
+    
+    @State private var showContent = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -23,30 +30,52 @@ struct ChatView: View {
                     Image(systemName: "chevron.left")
                         .foregroundStyle(Color.textOnDark)
                 }
-                if let p = otherProfile {
-                    AsyncImage(url: URL(string: p.primaryPhoto ?? "")) { phase in
-                        if case .success(let img) = phase {
-                            img.resizable().aspectRatio(contentMode: .fill)
-                        } else {
-                            Circle().fill(Color.gray.opacity(0.2))
+                NavigationLink(destination: ProfileView(profileId: otherId)) {
+                    if let p = otherProfile {
+                        AsyncImage(url: URL(string: p.primaryPhoto ?? "")) { phase in
+                            if case .success(let img) = phase {
+                                img.resizable().aspectRatio(contentMode: .fill)
+                            } else {
+                                Circle().fill(Color.gray.opacity(0.2))
+                            }
                         }
-                    }
-                    .frame(width: 40, height: 40)
-                    .clipShape(Circle())
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(p.name).font(.headline).foregroundStyle(Color.textOnDark)
-                        if otherIsTyping {
-                            Text("typing...")
-                                .font(.caption)
-                                .foregroundStyle(Color.brand)
-                        }
-                    }
-                } else {
-                    Circle().fill(Color.gray.opacity(0.2))
                         .frame(width: 40, height: 40)
-                    Text("Loading...").font(.headline).foregroundStyle(Color.textMuted)
+                        .clipShape(Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(p.name).font(.headline).foregroundStyle(Color.textOnDark)
+                            if otherIsTyping {
+                                Text("typing...")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.brand)
+                            }
+                        }
+                    } else {
+                        Circle().fill(Color.gray.opacity(0.2))
+                            .frame(width: 40, height: 40)
+                        Text("Loading...").font(.headline).foregroundStyle(Color.textMuted)
+                    }
                 }
+                .buttonStyle(.plain)
                 Spacer()
+                
+                if otherProfile != nil {
+                    Button {
+                        startInAppCall(isVideo: false)
+                    } label: {
+                        Image(systemName: "phone.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color.brand)
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        startInAppCall(isVideo: true)
+                    } label: {
+                        Image(systemName: "video.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color.brand)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding()
             .background(Color.bgDark)
@@ -101,20 +130,7 @@ struct ChatView: View {
                         }
                         
                         ForEach(messages) { m in
-                            HStack {
-                                if m.sent { Spacer() }
-                                VStack(alignment: m.sent ? .trailing : .leading, spacing: 2) {
-                                    Text(m.text)
-                                        .padding(12)
-                                        .background(m.sent ? Color.brand : Color.bgCard)
-                                        .foregroundStyle(m.sent ? .white : Color.textOnDark)
-                                        .cornerRadius(16)
-                                    if m.sent {
-                                        readReceiptView(for: m)
-                                    }
-                                }
-                                if !m.sent { Spacer() }
-                            }
+                            messageRow(m)
                         }
                     }
                     .padding()
@@ -164,36 +180,59 @@ struct ChatView: View {
                 }
             }
             
-            HStack(spacing: 12) {
-                Button {
-                    showIcebreakerCards.toggle()
-                } label: {
-                    Image(systemName: "square.grid.2x2")
-                        .font(.title3)
-                        .foregroundStyle(Color.brand)
+            if showVoiceRecorder {
+                VoiceRecorderView(
+                    onRecorded: { audioData in
+                        showVoiceRecorder = false
+                        sendVoiceMessage(audioData: audioData)
+                    },
+                    onCancel: { showVoiceRecorder = false }
+                )
+                .padding()
+                .background(Color.bgDark)
+            } else {
+                HStack(spacing: 12) {
+                    Button {
+                        showIcebreakerCards.toggle()
+                    } label: {
+                        Image(systemName: "square.grid.2x2")
+                            .font(.title3)
+                            .foregroundStyle(Color.brand)
+                    }
+                    Button {
+                        showVoiceRecorder = true
+                    } label: {
+                        Image(systemName: "mic.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color.brand)
+                    }
+                    TextField("Message", text: $inputText)
+                        .textFieldStyle(.plain)
+                        .padding()
+                        .background(Color.bgCard)
+                        .cornerRadius(24)
+                        .foregroundStyle(Color.textOnDark)
+                        .onChange(of: inputText) { _, _ in userDidType() }
+                        .onSubmit { send() }
+                    Button { send() } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(Color.brand)
+                    }
+                    .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-                TextField("Message", text: $inputText)
-                    .textFieldStyle(.plain)
-                    .padding()
-                    .background(Color.bgCard)
-                    .cornerRadius(24)
-                    .foregroundStyle(Color.textOnDark)
-                    .onChange(of: inputText) { _, _ in userDidType() }
-                    .onSubmit { send() }
-                Button { send() } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(Color.brand)
-                }
-                .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty)
+                .padding()
+                .background(Color.bgDark)
             }
-            .padding()
-            .background(Color.bgDark)
         }
         .background(Color.bgDark)
         .navigationBarHidden(true)
+        .opacity(showContent ? 1 : 0)
         .task { await load() }
-        .onAppear { startRefreshTimer() }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.35)) { showContent = true }
+            startRefreshTimer()
+        }
         .onDisappear {
             refreshTimer?.invalidate()
             refreshTimer = nil
@@ -206,6 +245,107 @@ struct ChatView: View {
         } message: {
             if let err = sendError { Text(err) }
         }
+        .alert("Can't call", isPresented: Binding(get: { callError != nil }, set: { if !$0 { callError = nil } })) {
+            Button("OK", role: .cancel) { callError = nil }
+        } message: {
+            if let err = callError { Text(err) }
+        }
+        .fullScreenCover(isPresented: $showInCallView) {
+            InCallView(otherName: otherProfile?.name ?? "Match", otherPhotoUrl: otherProfile?.primaryPhoto, isVideo: activeCallIsVideo) {
+                showInCallView = false
+            }
+        }
+        .overlay {
+            if let invite = incomingCall {
+                incomingCallOverlay(invite: invite)
+            }
+        }
+    }
+    
+    private func startInAppCall(isVideo: Bool) {
+        guard CallService.shared.hasValidConfig else {
+            callError = CallError.missingAppId.localizedDescription
+            return
+        }
+        guard let uid = auth.user?.id else {
+            callError = "Sign in to call"
+            return
+        }
+        activeCallIsVideo = isVideo
+        Task {
+            do {
+                let mid = try await APIService.getOrCreateMatchId(userId: uid, otherId: otherId)
+                // Agora channel names max 64 chars; matchId(36) + _ + suffix(12) = 49
+                let suffix = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(12))
+                let channelName = "\(mid)_\(suffix)"
+                _ = try await APIService.createCallInvite(matchId: mid, callerId: uid, calleeId: otherId, channelName: channelName, callType: isVideo ? "video" : "voice")
+                let uidInt = UInt(uid.hashValue & 0x7FFFFFFF)
+                try await CallService.shared.joinChannel(channelName, uid: uidInt, isVideo: isVideo)
+                showInCallView = true
+            } catch {
+                callError = error.localizedDescription
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func incomingCallOverlay(invite: CallInvite) -> some View {
+        ZStack {
+            Color.black.opacity(0.7).ignoresSafeArea()
+            VStack(spacing: 24) {
+                Text("\(otherProfile?.name ?? "Match") is calling")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                Text(invite.callType == "video" ? "Video call" : "Voice call")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.8))
+                HStack(spacing: 48) {
+                    Button {
+                        Task { await declineCall(invite) }
+                    } label: {
+                        VStack(spacing: 8) {
+                            Image(systemName: "phone.down.fill")
+                                .font(.system(size: 28))
+                            Text("Decline")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        Task { await answerCall(invite) }
+                    } label: {
+                        VStack(spacing: 8) {
+                            Image(systemName: "phone.fill")
+                                .font(.system(size: 28))
+                            Text("Answer")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.green)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+    
+    private func answerCall(_ invite: CallInvite) async {
+        do {
+            activeCallIsVideo = invite.callType == "video"
+            try await CallService.shared.joinChannel(invite.channelName, uid: UInt((auth.user?.id.hashValue ?? 0) & 0x7FFFFFFF), isVideo: activeCallIsVideo)
+            try? await APIService.updateCallStatus(inviteId: invite.id, status: "active")
+            incomingCall = nil
+            showInCallView = true
+        } catch {
+            callError = error.localizedDescription
+            incomingCall = nil
+        }
+    }
+    
+    private func declineCall(_ invite: CallInvite) async {
+        try? await APIService.updateCallStatus(inviteId: invite.id, status: "missed")
+        incomingCall = nil
     }
     
     private var icebreakerSuggestion: String? {
@@ -234,15 +374,19 @@ struct ChatView: View {
     
     private func startRefreshTimer() {
         refreshTimer?.invalidate()
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+        let t = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             Task { @MainActor in
                 await load()
-                if let mid = matchId, auth.user?.id != nil {
+                if let mid = matchId, let uid = auth.user?.id {
                     otherIsTyping = await APIService.isOtherTyping(matchId: mid, otherId: otherId)
+                    if incomingCall == nil, let invite = try? await APIService.getRingingCall(matchId: mid, calleeId: uid) {
+                        incomingCall = invite
+                    }
                 }
             }
         }
-        RunLoop.main.add(refreshTimer!, forMode: .common)
+        RunLoop.main.add(t, forMode: .common)
+        refreshTimer = t
     }
     
     private func userDidType() {
@@ -256,6 +400,28 @@ struct ChatView: View {
         typingDebounceTask = Task {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             try? await APIService.clearTyping(matchId: midCopy, userId: uidCopy)
+        }
+    }
+    
+    @ViewBuilder
+    private func messageRow(_ m: ChatMessage) -> some View {
+        HStack {
+            if m.sent { Spacer() }
+            VStack(alignment: m.sent ? .trailing : .leading, spacing: 2) {
+                if m.isVoiceMessage, let urlStr = m.voiceUrl, let url = URL(string: urlStr) {
+                    VoiceMessagePlayer(url: url, isSent: m.sent)
+                } else {
+                    Text(m.text)
+                        .padding(12)
+                        .background(m.sent ? Color.brand : Color.bgCard)
+                        .foregroundStyle(m.sent ? .white : Color.textOnDark)
+                        .cornerRadius(16)
+                }
+                if m.sent {
+                    readReceiptView(for: m)
+                }
+            }
+            if !m.sent { Spacer() }
         }
     }
     
@@ -296,6 +462,27 @@ struct ChatView: View {
                 await MainActor.run {
                     sendError = error.localizedDescription
                     if insertIndex < messages.count { messages.remove(at: insertIndex) }
+                }
+            }
+        }
+    }
+    
+    private func sendVoiceMessage(audioData: Data) {
+        guard let uid = auth.user?.id else {
+            sendError = "Sign in to send"
+            return
+        }
+        Task {
+            do {
+                let mid = try await APIService.getOrCreateMatchId(userId: uid, otherId: otherId)
+                let url = try await APIService.uploadVoiceMessage(matchId: mid, userId: uid, audioData: audioData)
+                let content = "voice:\(url)"
+                try await APIService.sendMessage(userId: uid, otherId: otherId, content: content)
+                NotificationCenter.default.post(name: .chatsDidUpdate, object: nil)
+                await load()
+            } catch {
+                await MainActor.run {
+                    sendError = error.localizedDescription
                 }
             }
         }

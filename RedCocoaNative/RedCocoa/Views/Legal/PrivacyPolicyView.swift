@@ -54,6 +54,7 @@ struct PrivacyPolicyView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Color.bgDark)
+        .smoothAppear()
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("Privacy Policy")
         .navigationBarTitleDisplayMode(.inline)

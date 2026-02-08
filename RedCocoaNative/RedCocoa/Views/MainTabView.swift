@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 extension Notification.Name {
     static let chatsDidUpdate = Notification.Name("chatsDidUpdate")
@@ -12,35 +13,47 @@ struct MainTabView: View {
     @State private var chatsRefreshTrigger = UUID()
     @State private var discoverProfileRefreshTrigger = UUID()
     @State private var openChatId: String?
+    @State private var unreadMessageCount = 0
+    @State private var likesCount = 0
+    @State private var likesRefreshTrigger = UUID()
     
     var body: some View {
         TabView(selection: $selectedTab) {
             DiscoverView(
                 profileRefreshTrigger: discoverProfileRefreshTrigger,
                 onProfileTap: { selectedTab = 3 },
-                onMatch: { chatsRefreshTrigger = UUID() }
+                onMatch: {
+                    chatsRefreshTrigger = UUID()
+                    likesRefreshTrigger = UUID()
+                }
             )
+                .smoothAppear()
                 .tabItem {
                     Image(systemName: "square.grid.2x2")
                     Text("Discover")
                 }
                 .tag(0)
             
-            LikesView()
+            LikesView(refreshTrigger: likesRefreshTrigger, onLikesCountChanged: { likesCount = $0 })
+                .smoothAppear()
                 .tabItem {
                     Image(systemName: "heart")
                     Text("Likes")
                 }
+                .badge(likesCount)
                 .tag(1)
             
-            ChatsListView(selectedTab: selectedTab, refreshTrigger: chatsRefreshTrigger, openChatId: $openChatId)
+            ChatsListView(selectedTab: selectedTab, refreshTrigger: chatsRefreshTrigger, openChatId: $openChatId, onUnreadCountChanged: { unreadMessageCount = $0 })
+                .smoothAppear()
                 .tabItem {
                     Image(systemName: "bubble.left.and.bubble.right")
                     Text("Chats")
                 }
+                .badge(unreadMessageCount)
                 .tag(2)
             
             SettingsView()
+                .smoothAppear()
                 .tabItem {
                     Image(systemName: "person")
                     Text("Profile")
@@ -51,10 +64,13 @@ struct MainTabView: View {
         .background(Color.bgDark)
         .onChange(of: selectedTab) { _, new in
             if new == 2 { chatsRefreshTrigger = UUID() }
+            if new == 1 { likesRefreshTrigger = UUID() }
             if new == 0 {
-                discoverProfileRefreshTrigger = UUID()
                 if let userId = auth.user?.id {
-                    Task { await auth.fetchProfile(userId: userId) }
+                    Task {
+                        await auth.fetchProfile(userId: userId)
+                        discoverProfileRefreshTrigger = UUID()
+                    }
                 }
             }
         }
@@ -62,9 +78,12 @@ struct MainTabView: View {
             chatsRefreshTrigger = UUID()
         }
         .onReceive(NotificationCenter.default.publisher(for: .profileDidUpdate)) { _ in
-            discoverProfileRefreshTrigger = UUID()
+            likesRefreshTrigger = UUID()
             if let userId = auth.user?.id {
-                Task { await auth.fetchProfile(userId: userId) }
+                Task {
+                    await auth.fetchProfile(userId: userId)
+                    discoverProfileRefreshTrigger = UUID()
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .openChatFromMatch)) { notification in
@@ -75,6 +94,15 @@ struct MainTabView: View {
                     openChatId = otherId
                 }
             }
+        }
+        .onChange(of: unreadMessageCount) { _, _ in
+            UIApplication.shared.applicationIconBadgeNumber = unreadMessageCount + likesCount
+        }
+        .onChange(of: likesCount) { _, _ in
+            UIApplication.shared.applicationIconBadgeNumber = unreadMessageCount + likesCount
+        }
+        .onAppear {
+            UIApplication.shared.applicationIconBadgeNumber = unreadMessageCount + likesCount
         }
     }
 }

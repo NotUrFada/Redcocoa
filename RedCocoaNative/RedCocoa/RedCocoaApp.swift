@@ -3,6 +3,7 @@ import UIKit
 
 @main
 struct RedCocoaApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var auth = AuthManager.shared
     
     init() {
@@ -22,6 +23,9 @@ struct RedCocoaApp: App {
                 .tint(.brand)
                 .onOpenURL { url in
                     auth.handleAuthURL(url)
+                }
+                .onAppear {
+                    NotificationService.shared.requestPermissionAndRegister()
                 }
         }
     }

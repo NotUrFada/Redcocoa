@@ -11,6 +11,7 @@ struct ChatsListView: View {
     var selectedTab: Int
     var refreshTrigger: UUID = UUID()
     @Binding var openChatId: String?
+    var onUnreadCountChanged: ((Int) -> Void)? = nil
     @EnvironmentObject var auth: AuthManager
     @State private var chats: [ChatPreview] = []
     @State private var loading = true
@@ -168,16 +169,26 @@ struct ChatsListView: View {
                                                     HStack {
                                                         Text(chat.name)
                                                             .font(.headline)
-                                                            .fontWeight(.bold)
+                                                            .fontWeight(chat.unreadCount > 0 ? .bold : .semibold)
                                                             .foregroundStyle(Color.textOnDark)
                                                         Spacer()
+                                                        if chat.unreadCount > 0 {
+                                                            Text("\(chat.unreadCount)")
+                                                                .font(.caption2)
+                                                                .fontWeight(.bold)
+                                                                .foregroundStyle(.white)
+                                                                .padding(.horizontal, 6)
+                                                                .padding(.vertical, 2)
+                                                                .background(Color.brand)
+                                                                .clipShape(Capsule())
+                                                        }
                                                         Text(chat.dateStr.isEmpty ? chat.time : chat.dateStr)
                                                             .font(.caption)
                                                             .foregroundStyle(Color.textMuted)
                                                     }
                                                     Text(chat.lastMessage)
                                                         .font(.subheadline)
-                                                        .foregroundStyle(Color.textMuted)
+                                                        .foregroundStyle(chat.unreadCount > 0 ? Color.textOnDark : Color.textMuted)
                                                         .lineLimit(1)
                                                 }
                                             }
@@ -259,8 +270,15 @@ struct ChatsListView: View {
     private func load() async {
         do {
             chats = try await APIService.getChats(userId: auth.user?.id ?? "")
+            let total = chats.reduce(0) { $0 + $1.unreadCount }
+            await MainActor.run {
+                onUnreadCountChanged?(total)
+            }
         } catch {
             chats = []
+            await MainActor.run {
+                onUnreadCountChanged?(0)
+            }
         }
         loading = false
     }

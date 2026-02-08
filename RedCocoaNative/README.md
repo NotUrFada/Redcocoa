@@ -28,6 +28,19 @@ Add to Info.plist or an xcconfig:
 ### Run
 Select a simulator or device, press **Run** (⌘R).
 
+### Troubleshooting build errors
+
+**"Signing for RedCocoa requires a development team"**  
+1. Open Xcode → select the **RedCocoa** project  
+2. Select the **RedCocoa** target → **Signing & Capabilities**  
+3. Under **Team**, choose your Apple ID (Personal Team)  
+   - If none: **Xcode → Settings → Accounts** → add your Apple ID  
+
+**"GeneratedAssetSymbols" / "Error closing" / SwiftCompile failed**  
+1. **Product → Clean Build Folder** (⇧⌘K)  
+2. If it persists, run: `./clean-build.sh`  
+3. Quit Xcode, reopen the project, then build again  
+
 ## Structure
 - `RedCocoaApp.swift` — App entry point
 - `Models/` — Profile, AppUser

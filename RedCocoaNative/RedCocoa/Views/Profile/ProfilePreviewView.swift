@@ -52,6 +52,7 @@ struct ProfilePreviewView: View {
                 .padding()
             }
         }
+        .smoothAppear()
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -11,10 +11,15 @@ struct OnboardingView: View {
                 ProfileSetupView(onComplete: {
                     auth.completeOnboarding()
                 })
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .trailing)),
+                    removal: .opacity.combined(with: .move(edge: .leading))
+                ))
             } else {
                 onboardingSlides
             }
         }
+        .animation(.easeOut(duration: 0.35), value: showProfileSetup)
         .background(Color.bgDark)
     }
     
@@ -51,9 +56,9 @@ struct OnboardingView: View {
             
             Button {
                 if currentPage < 2 {
-                    withAnimation { currentPage += 1 }
+                    withAnimation(.easeInOut(duration: 0.3)) { currentPage += 1 }
                 } else {
-                    showProfileSetup = true
+                    withAnimation(.easeOut(duration: 0.35)) { showProfileSetup = true }
                 }
             } label: {
                 Text(currentPage < 2 ? "Continue" : "Set up profile")

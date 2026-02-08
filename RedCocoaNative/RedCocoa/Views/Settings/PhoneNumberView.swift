@@ -33,6 +33,7 @@ struct PhoneNumberView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color.bgDark)
+        .smoothAppear()
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("Phone Number")
         .navigationBarTitleDisplayMode(.inline)

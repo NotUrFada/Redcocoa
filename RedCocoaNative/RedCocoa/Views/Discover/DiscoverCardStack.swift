@@ -131,31 +131,38 @@ struct DiscoverCardStack: View {
 struct ProfileCardView: View {
     let profile: Profile
     
+    private var placeholderView: some View {
+        Rectangle()
+            .fill(Color.bgCard)
+            .overlay {
+                Image(systemName: "person.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(Color.textMuted)
+            }
+    }
+    
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .bottomLeading) {
                 // Full-bleed portrait
-                AsyncImage(url: URL(string: profile.primaryPhoto ?? "")) { phase in
-                    switch phase {
-                    case .empty:
-                        Rectangle()
-                            .fill(Color.bgCard)
-                            .overlay { ProgressView().tint(Color.textMuted) }
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure:
-                        Rectangle()
-                            .fill(Color.bgCard)
-                            .overlay {
-                                Image(systemName: "person.circle")
-                                    .font(.system(size: 64))
-                                    .foregroundStyle(Color.textMuted)
+                Group {
+                    if let urlString = profile.primaryPhoto, !urlString.isEmpty, let url = URL(string: urlString) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                placeholderView
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            case .failure:
+                                placeholderView
+                            @unknown default:
+                                placeholderView
                             }
-                    @unknown default:
-                        Rectangle()
-                            .fill(Color.bgCard)
+                        }
+                    } else {
+                        placeholderView
                     }
                 }
                 .frame(width: geo.size.width, height: geo.size.height)

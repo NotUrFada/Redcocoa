@@ -85,76 +85,73 @@ struct SignUpView: View {
                     
                 VStack(spacing: 12) {
                     Button {
-                            Task {
-                                error = nil
-                                loading = true
-                                do {
-                                    try await auth.signInWithApple()
-                                    auth.completeOnboarding()
-                                    dismiss()
-                                } catch {
-                                    self.error = error.localizedDescription
-                                }
-                                loading = false
+                        Task {
+                            error = nil
+                            loading = true
+                            do {
+                                try await auth.signInWithApple()
+                                dismiss()
+                            } catch {
+                                self.error = error.localizedDescription
                             }
-                        } label: {
-                            HStack {
-                                Image(systemName: "apple.logo")
-                                Text("Continue with Apple")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.white)
-                            .foregroundStyle(.black)
-                            .cornerRadius(12)
-                            .fontWeight(.medium)
+                            loading = false
                         }
-                        .buttonStyle(.plain)
-                        .disabled(loading)
-                        
-                        Button {
-                            Task {
-                                error = nil
-                                loading = true
-                                do {
-                                    try await auth.signInWithGoogle()
-                                    auth.completeOnboarding()
-                                    dismiss()
-                                } catch {
-                                    self.error = error.localizedDescription
-                                }
-                                loading = false
-                            }
-                        } label: {
-                            HStack {
-                                Image(systemName: "globe")
-                                Text("Continue with Google")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.bgCard)
-                            .foregroundStyle(Color.textOnDark)
-                            .cornerRadius(12)
-                            .fontWeight(.medium)
+                    } label: {
+                        HStack {
+                            Image(systemName: "apple.logo")
+                            Text("Continue with Apple")
                         }
-                        .buttonStyle(.plain)
-                        .disabled(loading)
-                        
-                        NavigationLink(destination: PhoneAuthView()) {
-                            HStack {
-                                Image(systemName: "phone.fill")
-                                Text("Continue with phone")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.bgCard)
-                            .foregroundStyle(Color.textOnDark)
-                            .cornerRadius(12)
-                            .fontWeight(.medium)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(loading)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.white)
+                        .foregroundStyle(.black)
+                        .cornerRadius(12)
+                        .fontWeight(.medium)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(loading)
+                        
+                    Button {
+                        Task {
+                            error = nil
+                            loading = true
+                            do {
+                                try await auth.signInWithGoogle()
+                                dismiss()
+                            } catch {
+                                self.error = error.localizedDescription
+                            }
+                            loading = false
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "globe")
+                            Text("Continue with Google")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.bgCard)
+                        .foregroundStyle(Color.textOnDark)
+                        .cornerRadius(12)
+                        .fontWeight(.medium)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(loading)
+                    
+                    NavigationLink(destination: PhoneAuthView()) {
+                        HStack {
+                            Image(systemName: "phone.fill")
+                            Text("Continue with phone")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.bgCard)
+                        .foregroundStyle(Color.textOnDark)
+                        .cornerRadius(12)
+                        .fontWeight(.medium)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(loading)
                 }
                 .padding(.horizontal)
                 .opacity(showSocial ? 1 : 0)
@@ -186,7 +183,6 @@ struct SignUpView: View {
         loading = true
         do {
             try await auth.signUp(email: email, password: password, name: name)
-            auth.completeOnboarding()
             dismiss()
         } catch {
             self.error = error.localizedDescription

@@ -12,6 +12,16 @@ private struct IdentifiableVideoData: Identifiable {
     let ext: String
 }
 
+private struct IdentifiablePhotoUrl: Identifiable {
+    let id = UUID()
+    let url: String
+}
+
+private struct IdentifiableVideoUrl: Identifiable {
+    let id = UUID()
+    let url: String
+}
+
 struct EditProfileView: View {
     @EnvironmentObject var auth: AuthManager
     @Environment(\.dismiss) var dismiss
@@ -21,10 +31,10 @@ struct EditProfileView: View {
     @State private var location: String = ""
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var identifiablePhotos: [IdentifiableImage] = []
-    @State private var existingPhotoUrls: [String] = []
+    @State private var existingPhotoUrls: [IdentifiablePhotoUrl] = []
     @State private var videoItems: [PhotosPickerItem] = []
     @State private var identifiableVideoData: [IdentifiableVideoData] = []
-    @State private var existingVideoUrls: [String] = []
+    @State private var existingVideoUrls: [IdentifiableVideoUrl] = []
     @State private var photoPickerResetId = UUID()
     @State private var videoPickerResetId = UUID()
     @State private var saveSuccess = false
@@ -37,7 +47,7 @@ struct EditProfileView: View {
     @State private var promptResponses: [String: String] = [:]
     @State private var saving = false
     @State private var error: String?
-    @State private var showProfilePreview = false
+    @State private var showContent = false
     
     var body: some View {
         Form {
@@ -47,11 +57,14 @@ struct EditProfileView: View {
                     .listRowBackground(Color.bgCard)
             }
             
-            Section("Photos & Videos") {
+            Section {
                 photoGrid
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+            } header: {
+                Text("Photos & Videos")
             }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
             
             Section("Bio") {
                 TextEditor(text: $bio)
@@ -212,19 +225,15 @@ struct EditProfileView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color.bgDark)
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 16)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4)) { showContent = true }
+        }
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    showProfilePreview = true
-                } label: {
-                    Image(systemName: "eye")
-                    Text("Preview")
-                }
-                .foregroundStyle(Color.brand)
-            }
             ToolbarItem(placement: .confirmationAction) {
                 if saveSuccess {
                     HStack(spacing: 6) {
@@ -241,17 +250,12 @@ struct EditProfileView: View {
                 }
             }
         }
-        .sheet(isPresented: $showProfilePreview) {
-            NavigationStack {
-                ProfilePreviewView()
-            }
-        }
         .onAppear {
             name = auth.profile?.name ?? ""
             bio = auth.profile?.bio ?? ""
             location = auth.profile?.location ?? ""
-            existingPhotoUrls = auth.profile?.photoUrls ?? []
-            existingVideoUrls = auth.profile?.videoUrls ?? []
+            existingPhotoUrls = (auth.profile?.photoUrls ?? []).map { IdentifiablePhotoUrl(url: $0) }
+            existingVideoUrls = (auth.profile?.videoUrls ?? []).map { IdentifiableVideoUrl(url: $0) }
             selectedInterests = Set(auth.profile?.interests ?? [])
             ethnicity = auth.profile?.ethnicity ?? ""
             hairColor = auth.profile?.hairColor ?? ""
@@ -269,85 +273,58 @@ struct EditProfileView: View {
     
     @ViewBuilder
     private var photoGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            ForEach(existingPhotoUrls, id: \.self) { urlString in
-                AsyncImage(url: URL(string: urlString)) { phase in
-                    if case .success(let img) = phase {
-                        ZStack(alignment: .topTrailing) {
+        GeometryReader { geo in
+            let availableWidth = geo.size.width
+            let cellSize = max(90, (availableWidth - 24) / 3)
+            let columns = [
+                GridItem(.fixed(cellSize), spacing: 12),
+                GridItem(.fixed(cellSize), spacing: 12),
+                GridItem(.fixed(cellSize), spacing: 12)
+            ]
+            LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(existingPhotoUrls) { item in
+                photoCell(cellSize: cellSize) {
+                    AsyncImage(url: URL(string: item.url)) { phase in
+                        if case .success(let img) = phase {
                             img
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                                .frame(height: 100)
-                                .clipped()
-                                .cornerRadius(12)
-                            Button {
-                                existingPhotoUrls.removeAll { $0 == urlString }
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.white)
-                                    .background(Circle().fill(Color.black.opacity(0.5)))
-                            }
-                            .padding(6)
+                        } else {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.bgCard)
                         }
-                    } else {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.bgCard)
-                            .frame(height: 100)
                     }
+                } onRemove: {
+                    existingPhotoUrls.removeAll { $0.id == item.id }
                 }
             }
-            ForEach(existingVideoUrls, id: \.self) { urlString in
-                ZStack(alignment: .topTrailing) {
-                    VideoThumbnailView(url: urlString)
-                        .frame(height: 100)
-                        .clipped()
-                        .cornerRadius(12)
-                    Button {
-                        existingVideoUrls.removeAll { $0 == urlString }
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.white)
-                            .background(Circle().fill(Color.black.opacity(0.5)))
-                    }
-                    .padding(6)
+            ForEach(existingVideoUrls) { item in
+                photoCell(cellSize: cellSize) {
+                    VideoThumbnailView(url: item.url)
+                } onRemove: {
+                    existingVideoUrls.removeAll { $0.id == item.id }
                 }
             }
             ForEach(identifiablePhotos) { item in
-                ZStack(alignment: .topTrailing) {
+                photoCell(cellSize: cellSize) {
                     Image(uiImage: item.image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(height: 100)
-                        .clipped()
-                        .cornerRadius(12)
-                    Button {
-                        identifiablePhotos.removeAll { $0.id == item.id }
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.white)
-                            .background(Circle().fill(Color.black.opacity(0.5)))
-                    }
-                    .padding(6)
+                } onRemove: {
+                    identifiablePhotos.removeAll { $0.id == item.id }
                 }
             }
             ForEach(identifiableVideoData) { item in
-                ZStack(alignment: .topTrailing) {
+                photoCell(cellSize: cellSize) {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(Color.bgCard)
-                        .frame(height: 100)
                         .overlay {
                             Image(systemName: "video.fill")
                                 .font(.title)
                                 .foregroundStyle(Color.textMuted)
                         }
-                    Button {
-                        identifiableVideoData.removeAll { $0.id == item.id }
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.white)
-                            .background(Circle().fill(Color.black.opacity(0.5)))
-                    }
-                    .padding(6)
+                } onRemove: {
+                    identifiableVideoData.removeAll { $0.id == item.id }
                 }
             }
             let photoCount = existingPhotoUrls.count + identifiablePhotos.count
@@ -359,8 +336,9 @@ struct EditProfileView: View {
                     maxSelectionCount: totalSlots - photoCount - videoCount,
                     matching: .images
                 ) {
-                    addSlotLabel("Add photo")
+                    addSlotLabel("Add photo", cellSize: cellSize)
                 }
+                .buttonStyle(.plain)
                 .id("photo-\(photoPickerResetId)")
                 .onChange(of: photoItems) { _, newItems in
                     guard !newItems.isEmpty else { return }
@@ -386,8 +364,9 @@ struct EditProfileView: View {
                     maxSelectionCount: min(3, totalSlots - photoCount - videoCount),
                     matching: .videos
                 ) {
-                    addSlotLabel("Add video")
+                    addSlotLabel("Add video", cellSize: cellSize)
                 }
+                .buttonStyle(.plain)
                 .id("video-\(videoPickerResetId)")
                 .onChange(of: videoItems) { _, newItems in
                     guard !newItems.isEmpty else { return }
@@ -409,14 +388,35 @@ struct EditProfileView: View {
                     }
                 }
             }
+            }
         }
+        .frame(height: 400)
         .padding(.vertical, 8)
     }
     
-    private func addSlotLabel(_ text: String) -> some View {
+    @ViewBuilder
+    private func photoCell<Content: View>(cellSize: CGFloat, @ViewBuilder content: () -> Content, onRemove: @escaping () -> Void) -> some View {
+        ZStack(alignment: .topTrailing) {
+            content()
+                .frame(width: cellSize, height: cellSize)
+                .clipped()
+                .cornerRadius(12)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .background(Circle().fill(Color.black.opacity(0.6)))
+            }
+            .padding(6)
+            .buttonStyle(.plain)
+        }
+        .frame(width: cellSize, height: cellSize)
+    }
+    
+    private func addSlotLabel(_ text: String, cellSize: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: 12)
             .stroke(Color.textMuted, style: StrokeStyle(lineWidth: 2, dash: [6]))
-            .frame(height: 100)
+            .frame(width: cellSize, height: cellSize)
             .overlay {
                 VStack(spacing: 4) {
                     Image(systemName: "plus.circle")
@@ -434,14 +434,14 @@ struct EditProfileView: View {
         saving = true
         error = nil
         do {
-            var photoUrls = existingPhotoUrls
+            var photoUrls = existingPhotoUrls.map { $0.url }
             for item in identifiablePhotos {
                 if let data = item.image.jpegData(compressionQuality: 0.8) {
                     let url = try await APIService.uploadProfilePhoto(userId: userId, imageData: data)
                     photoUrls.append(url)
                 }
             }
-            var videoUrls = existingVideoUrls
+            var videoUrls = existingVideoUrls.map { $0.url }
             for item in identifiableVideoData {
                 let url = try await APIService.uploadProfileVideo(userId: userId, videoData: item.data, fileExtension: item.ext)
                 videoUrls.append(url)

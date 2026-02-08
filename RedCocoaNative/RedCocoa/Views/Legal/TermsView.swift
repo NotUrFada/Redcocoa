@@ -20,6 +20,7 @@ struct TermsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color.bgDark)
+        .smoothAppear()
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("Terms of Service")
         .navigationBarTitleDisplayMode(.inline)

@@ -6,8 +6,18 @@ struct FilterView: View {
     @AppStorage("filterAgeMin") private var ageMin = 18
     @AppStorage("filterAgeMax") private var ageMax = 35
     @AppStorage("filterLookingFor") private var lookingFor = "Everyone"
+    @AppStorage("filterHairColors") private var hairColorsRaw = ""
+    @AppStorage("filterEthnicities") private var ethnicitiesRaw = ""
     
     private let lookingForOptions = ["Everyone", "Men", "Women", "Non-binary"]
+    
+    private var selectedHairColors: Set<String> {
+        Set(hairColorsRaw.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
+    }
+    
+    private var selectedEthnicities: Set<String> {
+        Set(ethnicitiesRaw.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
+    }
     
     var body: some View {
         NavigationStack {
@@ -65,6 +75,60 @@ struct FilterView: View {
                     .foregroundStyle(Color.textOnDark)
                 }
                 .listRowBackground(Color.bgCard)
+                
+                Section("Hair Color") {
+                    Text("Include profiles with any selected hair color. Leave empty to show all.")
+                        .font(.caption)
+                        .foregroundStyle(Color.textMuted)
+                    ForEach(ProfileOptions.hairColorOptions, id: \.self) { opt in
+                        Button {
+                            var current = selectedHairColors
+                            if current.contains(opt) {
+                                current.remove(opt)
+                            } else {
+                                current.insert(opt)
+                            }
+                            hairColorsRaw = current.sorted().joined(separator: ",")
+                        } label: {
+                            HStack {
+                                Text(opt).foregroundStyle(Color.textOnDark)
+                                Spacer()
+                                if selectedHairColors.contains(opt) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Color.brand)
+                                }
+                            }
+                        }
+                    }
+                }
+                .listRowBackground(Color.bgCard)
+                
+                Section("Ethnicity") {
+                    Text("Include profiles with any selected ethnicity. Leave empty to show all.")
+                        .font(.caption)
+                        .foregroundStyle(Color.textMuted)
+                    ForEach(ProfileOptions.ethnicityOptions, id: \.self) { opt in
+                        Button {
+                            var current = selectedEthnicities
+                            if current.contains(opt) {
+                                current.remove(opt)
+                            } else {
+                                current.insert(opt)
+                            }
+                            ethnicitiesRaw = current.sorted().joined(separator: ",")
+                        } label: {
+                            HStack {
+                                Text(opt).foregroundStyle(Color.textOnDark)
+                                Spacer()
+                                if selectedEthnicities.contains(opt) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Color.brand)
+                                }
+                            }
+                        }
+                    }
+                }
+                .listRowBackground(Color.bgCard)
             }
             .scrollContentBackground(.hidden)
             .background(Color.bgDark)
@@ -79,6 +143,7 @@ struct FilterView: View {
                     .foregroundStyle(Color.brand)
                 }
             }
+            .smoothAppear()
         }
     }
 }

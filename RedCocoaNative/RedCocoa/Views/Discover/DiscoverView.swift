@@ -8,7 +8,6 @@ struct DiscoverView: View {
     @State private var showFilters = false
     @State private var showMatchOverlay = false
     @State private var matchedProfile: Profile?
-    @State private var showProfilePreview = false
     var profileRefreshTrigger: UUID = UUID()
     var onProfileTap: (() -> Void)? = nil
     var onMatch: (() -> Void)? = nil
@@ -22,6 +21,7 @@ struct DiscoverView: View {
                         .foregroundStyle(Color.textOnDark)
                 } else if viewModel.profiles.isEmpty || viewModel.currentProfile == nil {
                     EmptyDiscoverView(onAdjustFilters: {})
+                        .smoothAppear()
                 } else if let profile = viewModel.currentProfile {
                     DiscoverCardStack(
                         profile: profile,
@@ -34,14 +34,17 @@ struct DiscoverView: View {
                         onMessage: { selectedChatId = profile.id },
                         onTap: { selectedProfileId = profile.id }
                     )
+                    .smoothAppear()
                 }
                 
                 if showMatchOverlay, let matched = matchedProfile {
                     MatchOverlayView(
                         matchedName: matched.name,
                         onDismiss: {
-                            showMatchOverlay = false
-                            matchedProfile = nil
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                showMatchOverlay = false
+                                matchedProfile = nil
+                            }
                             viewModel.advance()
                             NotificationCenter.default.post(name: .openChatFromMatch, object: matched.id)
                         }
@@ -53,15 +56,7 @@ struct DiscoverView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 12) {
-                        profileAvatar
-                        Button {
-                            showProfilePreview = true
-                        } label: {
-                            Image(systemName: "eye")
-                                .foregroundStyle(Color.brand)
-                        }
-                    }
+                    profileAvatar
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -72,13 +67,13 @@ struct DiscoverView: View {
                     .foregroundStyle(Color.brand)
                 }
             }
-            .sheet(isPresented: $showProfilePreview) {
-                NavigationStack {
-                    ProfilePreviewView()
-                }
-            }
             .sheet(isPresented: $showFilters) {
                 FilterView()
+            }
+            .onChange(of: showFilters) { _, isShowing in
+                if !isShowing {
+                    Task { await viewModel.load(userId: auth.user?.id ?? "") }
+                }
             }
             .navigationDestination(item: $selectedProfileId) { id in
                 ProfileView(profileId: id, onOpenChat: { selectedChatId = id }, onMatch: { _ in onMatch?() })
@@ -91,6 +86,9 @@ struct DiscoverView: View {
             await viewModel.load(userId: auth.user?.id ?? "")
         }
         .onAppear {
+            if let userId = auth.user?.id { Task { await auth.fetchProfile(userId: userId) } }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .profileDidUpdate)) { _ in
             if let userId = auth.user?.id { Task { await auth.fetchProfile(userId: userId) } }
         }
     }

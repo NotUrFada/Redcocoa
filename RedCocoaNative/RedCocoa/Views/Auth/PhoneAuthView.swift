@@ -8,6 +8,7 @@ struct PhoneAuthView: View {
     @State private var otpSent = false
     @State private var error: String?
     @State private var loading = false
+    @State private var showContent = false
     
     var body: some View {
         ScrollView {
@@ -96,12 +97,17 @@ struct PhoneAuthView: View {
                 }
             }
             .padding()
+            .opacity(showContent ? 1 : 0)
+            .offset(y: showContent ? 0 : 20)
         }
         .scrollContentBackground(.hidden)
         .background(Color.bgDark)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("Phone")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4)) { showContent = true }
+        }
     }
     
     private func sendOTP() async {
@@ -121,7 +127,6 @@ struct PhoneAuthView: View {
         loading = true
         do {
             try await auth.verifyPhoneOTP(phone: phone, token: otp)
-            auth.completeOnboarding()
             dismiss()
         } catch {
             self.error = error.localizedDescription

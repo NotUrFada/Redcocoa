@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct RootView: View {
     @EnvironmentObject var auth: AuthManager
@@ -38,29 +39,44 @@ struct RootView: View {
                 splashFinished = true
             }
         }
+        .onChange(of: auth.user) { _, new in
+            if new == nil {
+                UIApplication.shared.applicationIconBadgeNumber = 0
+            }
+        }
     }
     
     @ViewBuilder
     private var mainContent: some View {
-        if auth.loading {
-            LoadingView()
-        } else if auth.user == nil {
-            LoginView(onBackToWelcome: { hasSeenWelcome = false })
-        } else if !auth.onboardingComplete {
-            OnboardingView()
-        } else {
-            MainTabView()
+        Group {
+            if auth.loading {
+                LoadingView()
+            } else if auth.user == nil {
+                LoginView(onBackToWelcome: { hasSeenWelcome = false })
+            } else if !auth.onboardingComplete {
+                OnboardingView()
+            } else {
+                MainTabView()
+            }
         }
+        .transition(.opacity)
+        .animation(.easeOut(duration: 0.35), value: "\(auth.loading)_\(auth.user?.id ?? "nil")_\(auth.onboardingComplete)")
     }
 }
 
 struct LoadingView: View {
+    @State private var appeared = false
     var body: some View {
         ZStack {
             Color.bgDark
                 .ignoresSafeArea()
             ProgressView()
                 .tint(Color.textOnDark)
+                .scaleEffect(appeared ? 1 : 0.9)
+                .opacity(appeared ? 1 : 0)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.3)) { appeared = true }
         }
     }
 }

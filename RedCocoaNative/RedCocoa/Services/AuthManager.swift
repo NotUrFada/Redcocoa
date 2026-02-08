@@ -3,6 +3,7 @@ import Supabase
 import Combine
 import AuthenticationServices
 import CryptoKit
+import UIKit
 
 @MainActor
 class AuthManager: ObservableObject {
@@ -34,6 +35,9 @@ class AuthManager: ObservableObject {
             let userId = session.user.id.uuidString
             user = AppUser(id: userId, email: session.user.email ?? "")
             await fetchProfile(userId: userId)
+            if let token = UserDefaults.standard.string(forKey: "RedCocoa.deviceToken"), !token.isEmpty {
+                try? await APIService.saveDeviceToken(userId: userId, token: token)
+            }
             let explicit = UserDefaults.standard.bool(forKey: "onboardingComplete_\(userId)")
             let hasProfile = profile != nil && (
                 (profile?.photoUrls?.isEmpty == false) ||
@@ -83,6 +87,7 @@ class AuthManager: ObservableObject {
         user = nil
         profile = nil
         onboardingComplete = false
+        UIApplication.shared.applicationIconBadgeNumber = 0
     }
     
     func deleteAccount() async throws {

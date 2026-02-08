@@ -7,6 +7,7 @@ struct ForgotPasswordView: View {
     @State private var error: String?
     @State private var sent = false
     @State private var loading = false
+    @State private var showContent = false
     
     var body: some View {
         ScrollView {
@@ -71,12 +72,17 @@ struct ForgotPasswordView: View {
                 }
             }
             .padding()
+            .opacity(showContent ? 1 : 0)
+            .offset(y: showContent ? 0 : 20)
         }
         .scrollContentBackground(.hidden)
         .background(Color.bgDark)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("Reset Password")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4)) { showContent = true }
+        }
     }
     
     private func resetPassword() async {

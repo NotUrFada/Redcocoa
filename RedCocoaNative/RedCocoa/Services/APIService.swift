@@ -6,7 +6,11 @@ enum APIService {
     static var client: SupabaseClient? { SupabaseConfig.client }
     
     // MARK: - Discovery
-    static func getDiscoveryProfiles(userId: String) async throws -> [Profile] {
+    static func getDiscoveryProfiles(
+        userId: String,
+        hairColorFilter: Set<String> = [],
+        ethnicityFilter: Set<String> = []
+    ) async throws -> [Profile] {
         guard let client = client, userId != "demo" else {
             return MockData.profiles
         }
@@ -21,7 +25,21 @@ enum APIService {
         
         let excludeIds = Set(blocked.map { $0.blocked_id } + passed.map { $0.passed_id } + liked.map { $0.to_user_id })
         
-        let all: [Profile] = try await client.from("profiles").select().neq("id", value: userId).execute().value
+        var all: [Profile] = try await client.from("profiles").select().neq("id", value: userId).execute().value
+        
+        if !hairColorFilter.isEmpty {
+            all = all.filter { p in
+                guard let hc = p.hairColor?.trimmingCharacters(in: .whitespaces), !hc.isEmpty else { return false }
+                return hairColorFilter.contains { $0.lowercased() == hc.lowercased() }
+            }
+        }
+        
+        if !ethnicityFilter.isEmpty {
+            all = all.filter { p in
+                guard let eth = p.ethnicity?.trimmingCharacters(in: .whitespaces), !eth.isEmpty else { return false }
+                return ethnicityFilter.contains { $0.lowercased() == eth.lowercased() }
+            }
+        }
         
         return all.filter { !excludeIds.contains($0.id) }
     }
@@ -102,7 +120,7 @@ enum APIService {
     // MARK: - Chats
     static func getChats(userId: String) async throws -> [ChatPreview] {
         guard let client = client, userId != "demo" else {
-            return MockData.profiles.prefix(2).map { ChatPreview(id: $0.id, name: $0.name, image: $0.primaryPhoto, lastMessage: "No messages yet", time: "", dateStr: "") }
+            return MockData.profiles.prefix(2).map { ChatPreview(id: $0.id, name: $0.name, image: $0.primaryPhoto, lastMessage: "No messages yet", time: "", dateStr: "", unreadCount: 0) }
         }
         
         struct MatchRow: Decodable { let id: String, user1_id: String, user2_id: String }
@@ -120,12 +138,23 @@ enum APIService {
         let profs: [Profile] = (try? await client.from("profiles").select().in("id", values: otherIds).execute().value) ?? []
         let profById = Dictionary(uniqueKeysWithValues: profs.map { ($0.id, $0) })
         
-        struct LastMsg: Decodable { let match_id: String, content: String, created_at: String }
+        struct LastMsg: Decodable { let match_id: String, content: String, created_at: String, sender_id: String?, read_at: String? }
         let matchIds = relevant.map { $0.id }
-        let lastMsgs: [LastMsg] = (try? await client.from("messages").select("match_id, content, created_at").in("match_id", values: matchIds).order("created_at", ascending: false).execute().value) ?? []
+        let lastMsgs: [LastMsg] = (try? await client.from("messages").select("match_id, content, created_at, sender_id, read_at").in("match_id", values: matchIds).order("created_at", ascending: false).execute().value) ?? []
         var lastByMatch: [String: LastMsg] = [:]
         for msg in lastMsgs {
             if lastByMatch[msg.match_id] == nil { lastByMatch[msg.match_id] = msg }
+        }
+        
+        struct UnreadRow: Decodable { let match_id: String, sender_id: String?, read_at: String? }
+        let allMsgs: [UnreadRow] = (try? await client.from("messages").select("match_id, sender_id, read_at").in("match_id", values: matchIds).execute().value) ?? []
+        var unreadByMatch: [String: Int] = [:]
+        for msg in allMsgs {
+            let fromOther = msg.sender_id?.lowercased() != uid
+            let unread = msg.read_at == nil || msg.read_at?.isEmpty == true
+            if fromOther && unread {
+                unreadByMatch[msg.match_id, default: 0] += 1
+            }
         }
         
         let timeFormatter = DateFormatter()
@@ -133,17 +162,28 @@ enum APIService {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "M/d/yyyy"
         
-        return otherIds.map { id in
+        let sortedIds = otherIds.sorted { id1, id2 in
+            let last1 = matchByOther[id1].flatMap { lastByMatch[$0.id] }
+            let last2 = matchByOther[id2].flatMap { lastByMatch[$0.id] }
+            let d1 = last1.flatMap { ISO8601DateFormatter().date(from: $0.created_at) } ?? .distantPast
+            let d2 = last2.flatMap { ISO8601DateFormatter().date(from: $0.created_at) } ?? .distantPast
+            return d1 > d2
+        }
+        
+        return sortedIds.map { id in
             let p = profById[id]
             let m = matchByOther[id]
             let last = m.flatMap { lastByMatch[$0.id] }
+            let unread = m.flatMap { unreadByMatch[$0.id] } ?? 0
             var timeStr = ""
             var dateStr = ""
             if let d = last.flatMap({ ISO8601DateFormatter().date(from: $0.created_at) }) {
                 timeStr = timeFormatter.string(from: d)
                 dateStr = dateFormatter.string(from: d)
             }
-            return ChatPreview(id: id, name: p?.name ?? "Unknown", image: p?.primaryPhoto, lastMessage: last?.content ?? "Tap to chat", time: timeStr, dateStr: dateStr)
+            let lastContent = last?.content ?? "Tap to chat"
+            let lastDisplay = lastContent.hasPrefix("voice:") ? "Voice message" : lastContent
+            return ChatPreview(id: id, name: p?.name ?? "Unknown", image: p?.primaryPhoto, lastMessage: lastDisplay, time: timeStr, dateStr: dateStr, unreadCount: unread)
         }
     }
     
@@ -153,6 +193,24 @@ enum APIService {
         let m1: MatchId? = try? await client.from("matches").select("id").eq("user1_id", value: userId).eq("user2_id", value: otherId).single().execute().value
         let m2: MatchId? = try? await client.from("matches").select("id").eq("user1_id", value: otherId).eq("user2_id", value: userId).single().execute().value
         return m1?.id ?? m2?.id
+    }
+    
+    static func getOrCreateMatchId(userId: String, otherId: String) async throws -> String {
+        guard let client = client else {
+            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Supabase not configured"])
+        }
+        let u1 = userId < otherId ? userId : otherId
+        let u2 = userId < otherId ? otherId : userId
+        var match = try await getMatchId(userId: userId, otherId: otherId)
+        if match == nil {
+            struct MatchInsert: Encodable { let user1_id: String, user2_id: String }
+            try await client.from("matches").insert(MatchInsert(user1_id: u1, user2_id: u2)).execute()
+            match = try await getMatchId(userId: userId, otherId: otherId)
+        }
+        guard let m = match else {
+            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not create conversation"])
+        }
+        return m
     }
     
     static func getMessages(userId: String, otherId: String) async throws -> [ChatMessage] {
@@ -218,6 +276,15 @@ enum APIService {
         return Date().timeIntervalSince(updated) < 3
     }
     
+    static func saveDeviceToken(userId: String, token: String) async throws {
+        guard let client = client, userId != "demo" else { return }
+        struct TokenInsert: Encodable {
+            let user_id: String
+            let token: String
+        }
+        try await client.from("user_device_tokens").upsert(TokenInsert(user_id: userId, token: token), onConflict: "user_id").execute()
+    }
+    
     static func sendMessage(userId: String, otherId: String, content: String) async throws {
         guard let client = client else {
             throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Supabase not configured"])
@@ -251,6 +318,46 @@ enum APIService {
         } catch {
             throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to send: \(error.localizedDescription)"])
         }
+    }
+    
+    // MARK: - Calls
+    static func createCallInvite(matchId: String, callerId: String, calleeId: String, channelName: String, callType: String) async throws -> String {
+        guard let client = client, callerId != "demo" else {
+            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not configured"])
+        }
+        struct CreateCallInviteParams: Encodable {
+            let match_id: String
+            let caller_id: String
+            let callee_id: String
+            let channel_name: String
+            let call_type: String
+        }
+        let params = CreateCallInviteParams(match_id: matchId, caller_id: callerId, callee_id: calleeId, channel_name: channelName, call_type: callType)
+        let result: String = try await client.rpc("create_call_invite", params: params).execute().value
+        return result
+    }
+    
+    static func updateCallStatus(inviteId: String, status: String) async throws {
+        guard let client = client else { return }
+        struct StatusUpdate: Encodable {
+            let status: String
+            let updated_at: String
+        }
+        let now = ISO8601DateFormatter().string(from: Date())
+        _ = try? await client.from("call_invites").update(StatusUpdate(status: status, updated_at: now)).eq("id", value: inviteId).execute()
+    }
+    
+    static func getRingingCall(matchId: String, calleeId: String) async throws -> CallInvite? {
+        guard let client = client else { return nil }
+        struct Row: Decodable {
+            let id: String
+            let channel_name: String
+            let caller_id: String
+            let call_type: String
+        }
+        let rows: [Row] = (try? await client.from("call_invites").select("id, channel_name, caller_id, call_type").eq("match_id", value: matchId).eq("callee_id", value: calleeId).eq("status", value: "ringing").order("created_at", ascending: false).limit(1).execute().value) ?? []
+        guard let r = rows.first else { return nil }
+        return CallInvite(id: r.id, channelName: r.channel_name, callerId: r.caller_id, callType: r.call_type)
     }
     
     // MARK: - Profile
@@ -380,6 +487,14 @@ enum APIService {
         return url.absoluteString
     }
     
+    static func uploadVoiceMessage(matchId: String, userId: String, audioData: Data) async throws -> String {
+        guard let client = client else { throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "No Supabase client"]) }
+        let path = "\(userId)/voice/\(matchId)/\(UUID().uuidString).m4a"
+        _ = try await client.storage.from("avatars").upload(path, data: audioData)
+        let url = try client.storage.from("avatars").getPublicURL(path: path)
+        return url.absoluteString
+    }
+    
     static func setProfilePhotos(userId: String, photoUrls: [String], name: String = "User") async throws {
         guard let client = client else { return }
         struct PhotoUpdate: Encodable {
@@ -430,6 +545,14 @@ struct ChatPreview: Identifiable {
     let lastMessage: String
     let time: String
     let dateStr: String
+    let unreadCount: Int
+}
+
+struct CallInvite: Identifiable {
+    let id: String
+    let channelName: String
+    let callerId: String
+    let callType: String
 }
 
 struct ChatMessage: Identifiable {
@@ -438,4 +561,7 @@ struct ChatMessage: Identifiable {
     let time: String
     let sent: Bool
     var readAt: Date?
+    
+    var isVoiceMessage: Bool { text.hasPrefix("voice:") }
+    var voiceUrl: String? { isVoiceMessage ? String(text.dropFirst(6)) : nil }
 }

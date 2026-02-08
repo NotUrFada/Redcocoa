@@ -18,10 +18,16 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Red Cocoa needs camera access for video calls.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Red Cocoa needs microphone access for voice messages and calls.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Red Cocoa uses your location to show matches near you.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Red Cocoa needs access to your photos and videos to add them to your profile.</string>
+	<key>AGORA_APP_ID</key>
+	<string>a36c0fa1fdb64598b37ac89c29bbdedf</string>
 	<key>SUPABASE_URL</key>
 	<string>https://gvbmhnbnvdexdvjxrhhz.supabase.co</string>
 	<key>SUPABASE_ANON_KEY</key>
