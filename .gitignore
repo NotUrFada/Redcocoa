@@ -23,3 +23,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase local temp
+supabase/.temp/
+
+# Xcode user state
+*.xcuserstate
