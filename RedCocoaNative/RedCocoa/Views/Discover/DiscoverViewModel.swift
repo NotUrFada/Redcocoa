@@ -47,12 +47,15 @@ class DiscoverViewModel: ObservableObject {
     func like(onMatch: ((Profile) -> Void)? = nil) {
         guard let profile = currentProfile else { advance(); return }
         let uid = userId
-        advance()
         if let userId = uid, !userId.isEmpty, userId != "demo" {
             Task {
                 let isMatch = (try? await APIService.likeProfile(userId: userId, likedId: profile.id)) ?? false
                 await MainActor.run {
-                    if isMatch { onMatch?(profile) }
+                    if isMatch {
+                        onMatch?(profile)
+                    } else {
+                        advance()
+                    }
                 }
             }
         } else {
@@ -60,7 +63,7 @@ class DiscoverViewModel: ObservableObject {
         }
     }
     
-    private func advance() {
+    func advance() {
         if currentIndex < profiles.count - 1 {
             currentIndex += 1
         }

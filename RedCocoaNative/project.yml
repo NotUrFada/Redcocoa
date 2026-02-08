@@ -16,9 +16,7 @@ targets:
       - path: RedCocoa
         excludes:
           - "Info.plist"
-          - "WelcomeVideo.mp4"
           - "Fonts"
-      # WelcomeVideo.mp4 excluded (large file). Add to RedCocoa/ and run xcodegen to include.
       - path: RedCocoa/Fonts/Inter-Thin.ttf
         type: resource
     settings:

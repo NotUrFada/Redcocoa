@@ -3,6 +3,7 @@ import SwiftUI
 extension Notification.Name {
     static let chatsDidUpdate = Notification.Name("chatsDidUpdate")
     static let profileDidUpdate = Notification.Name("profileDidUpdate")
+    static let openChatFromMatch = Notification.Name("openChatFromMatch")
 }
 
 struct MainTabView: View {
@@ -10,6 +11,7 @@ struct MainTabView: View {
     @State private var selectedTab = 0
     @State private var chatsRefreshTrigger = UUID()
     @State private var discoverProfileRefreshTrigger = UUID()
+    @State private var openChatId: String?
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -31,7 +33,7 @@ struct MainTabView: View {
                 }
                 .tag(1)
             
-            ChatsListView(selectedTab: selectedTab, refreshTrigger: chatsRefreshTrigger)
+            ChatsListView(selectedTab: selectedTab, refreshTrigger: chatsRefreshTrigger, openChatId: $openChatId)
                 .tabItem {
                     Image(systemName: "bubble.left.and.bubble.right")
                     Text("Chats")
@@ -63,6 +65,15 @@ struct MainTabView: View {
             discoverProfileRefreshTrigger = UUID()
             if let userId = auth.user?.id {
                 Task { await auth.fetchProfile(userId: userId) }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openChatFromMatch)) { notification in
+            if let otherId = notification.object as? String {
+                selectedTab = 2
+                chatsRefreshTrigger = UUID()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    openChatId = otherId
+                }
             }
         }
     }

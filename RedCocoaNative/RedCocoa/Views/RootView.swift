@@ -6,31 +6,45 @@ struct RootView: View {
     @State private var splashFinished = false
     
     var body: some View {
-        Group {
-            if !splashFinished {
-                SplashView()
-            } else if !hasSeenWelcome {
-                WelcomeView(onGetStarted: {
-                    hasSeenWelcome = true
-                })
-            } else if auth.loading {
-                LoadingView()
-            } else if auth.user == nil {
-                LoginView()
-            } else if !auth.onboardingComplete {
-                OnboardingView()
+        ZStack {
+            if hasSeenWelcome {
+                mainContent
             } else {
-                MainTabView()
+                ZStack {
+                    SplashView()
+                        .opacity(splashFinished ? 0 : 1)
+                        .allowsHitTesting(!splashFinished)
+                    
+                    WelcomeView(onGetStarted: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            hasSeenWelcome = true
+                        }
+                    })
+                    .opacity(splashFinished ? 1 : 0)
+                    .allowsHitTesting(splashFinished)
+                }
+                .animation(.easeInOut(duration: 0.4), value: splashFinished)
             }
         }
         .background(Color.bgDark)
-        .animation(.easeInOut(duration: 0.3), value: splashFinished)
-        .animation(.easeInOut(duration: 0.3), value: hasSeenWelcome)
         .onAppear {
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 splashFinished = true
             }
+        }
+    }
+    
+    @ViewBuilder
+    private var mainContent: some View {
+        if auth.loading {
+            LoadingView()
+        } else if auth.user == nil {
+            LoginView(onBackToWelcome: { hasSeenWelcome = false })
+        } else if !auth.onboardingComplete {
+            OnboardingView()
+        } else {
+            MainTabView()
         }
     }
 }

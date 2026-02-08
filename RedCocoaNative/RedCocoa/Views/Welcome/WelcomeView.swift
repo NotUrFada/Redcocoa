@@ -8,9 +8,8 @@ struct WelcomeView: View {
         ZStack {
             Color.bgDark
                 .ignoresSafeArea()
-            Image("WelcomeBackground")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
+            LoopingVideoPlayerView(videoName: "WelcomeVideo", fileExtension: "mp4")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
             
             // Gradient overlay for readability

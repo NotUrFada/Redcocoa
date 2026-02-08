@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var auth: AuthManager
+    var onBackToWelcome: (() -> Void)? = nil
     @State private var email = ""
     @State private var password = ""
     @State private var error: String?
@@ -175,6 +176,32 @@ struct LoginView: View {
             .scrollContentBackground(.hidden)
             .background(Color.bgDark)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                if let onBack = onBackToWelcome {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            onBack()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                            Text("Back")
+                        }
+                        .foregroundStyle(Color.brand)
+                    }
+                }
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 40)
+                    .onEnded { value in
+                        guard let onBack = onBackToWelcome else { return }
+                        let fromLeftEdge = value.startLocation.x < 60
+                        let rightSwipe = value.translation.width > 60
+                        let mostlyHorizontal = abs(value.translation.height) < abs(value.translation.width) * 1.5
+                        if fromLeftEdge && rightSwipe && mostlyHorizontal {
+                            onBack()
+                        }
+                    }
+            )
             .navigationDestination(isPresented: $showSignUp) {
                 SignUpView()
             }

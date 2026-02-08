@@ -93,38 +93,24 @@ class AuthManager: ObservableObject {
             UserDefaults.standard.removeObject(forKey: "onboardingComplete")
             return
         }
-        let session = try await supabase.auth.session
-        let userId = session.user.id.uuidString
+        let userId = (try? await supabase.auth.session)?.user.id.uuidString ?? user?.id ?? ""
         
-        // Delete user's storage objects first (required - Supabase blocks user deletion if they own storage)
-        await deleteUserStorageFiles(supabase: supabase, path: userId)
-        
-        guard let url = URL(string: Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String ?? ""),
-              var components = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
-            throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid Supabase URL"])
-        }
-        components.path = "/auth/v1/user"
-        guard let deleteURL = components.url else {
-            throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
-        }
-        var request = URLRequest(url: deleteURL)
-        request.httpMethod = "DELETE"
-        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String ?? "", forHTTPHeaderField: "apikey")
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to delete account"])
-        }
-        guard (200...299).contains(http.statusCode) else {
+        do {
+            _ = try await supabase.functions.invoke("delete-user")
+        } catch {
             var message = "Failed to delete account"
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let msg = json["msg"] as? String ?? json["message"] as? String ?? json["error_description"] as? String {
-                message = msg
+            if let fe = error as? FunctionsError,
+               case .httpError(_, let data) = fe,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errMsg = json["error"] as? String {
+                message = errMsg
+            } else if !error.localizedDescription.isEmpty, error.localizedDescription != "The operation couldn't be completed." {
+                message = error.localizedDescription
             }
-            throw NSError(domain: "AuthManager", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: message])
+            throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
         }
-        try await supabase.auth.signOut()
+        
+        try? await supabase.auth.signOut()
         user = nil
         profile = nil
         onboardingComplete = false

@@ -23,6 +23,7 @@
 		5BB1DEACE62A0675FC3159D3 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2405DF2D91355AE2DE8F35DA /* DiscoverView.swift */; };
 		5D83EE0E3E3F046B452F624D /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406B0E6BBF4CE9886218D063 /* LoginView.swift */; };
 		65E6379718B3F614985B027B /* Inter-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E80043C1553B5077B23A3798 /* Inter-Thin.ttf */; };
+		WELV001557691122F0D8658B /* WelcomeVideo.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = WELV0022557691122F0D8658C /* WelcomeVideo.mp4 */; };
 		66C06820B3A328894DF305DA /* ProfileSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69208C3369F52016960C20EA /* ProfileSetupView.swift */; };
 		77D7297CD143DFC31AC6A4FE /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38EBF32756CB888D063B5A5E /* Profile.swift */; };
 		7C729651D503F46E649AC74A /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4421D21BABD5BBC6ABF0996 /* LocationManager.swift */; };
@@ -97,6 +98,7 @@
 		E15EE399C3B57A9A5F75124B /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		E1AACFCA5582EA321900F6A9 /* UserPreferencesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferencesService.swift; sourceTree = "<group>"; };
 		E80043C1553B5077B23A3798 /* Inter-Thin.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Thin.ttf"; sourceTree = "<group>"; };
+		WELV0022557691122F0D8658C /* WelcomeVideo.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = WelcomeVideo.mp4; sourceTree = "<group>"; };
 		E863FC3F2BB61C8712AC0D67 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		F4421D21BABD5BBC6ABF0996 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		VID0022557691122F0D8658C /* VideoThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoThumbnailView.swift; sourceTree = "<group>"; };
@@ -256,6 +258,7 @@
 			isa = PBXGroup;
 			children = (
 				66F30FBF3C125B513699C974 /* Assets.xcassets */,
+				WELV0022557691122F0D8658C /* WelcomeVideo.mp4 */,
 				6FC0C15659B4F6ED06F5C15A /* RedCocoa.entitlements */,
 				2273E00EB81F3C4AA2339CE2 /* RedCocoaApp.swift */,
 				42C075B7E5EA98D3D4BE969A /* Data */,
@@ -387,6 +390,7 @@
 			files = (
 				E0A9CE669B391B2B9379AA81 /* Assets.xcassets in Resources */,
 				65E6379718B3F614985B027B /* Inter-Thin.ttf in Resources */,
+				WELV001557691122F0D8658B /* WelcomeVideo.mp4 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

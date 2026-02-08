@@ -46,20 +46,20 @@ struct DiscoverCardStack: View {
                         let width = value.translation.width
                         if width < -swipeThreshold {
                             SoundEffectService.playPass()
-                            withAnimation(.easeOut(duration: 0.3)) {
+                            onPass()
+                            withAnimation(.easeOut(duration: 0.2)) {
                                 dragOffset = CGSize(width: -500, height: value.translation.height * 0.5)
                             }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                onPass()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                                 dragOffset = .zero
                             }
                         } else if width > swipeThreshold {
                             SoundEffectService.playLike()
-                            withAnimation(.easeOut(duration: 0.3)) {
+                            onLike()
+                            withAnimation(.easeOut(duration: 0.2)) {
                                 dragOffset = CGSize(width: 500, height: value.translation.height * 0.5)
                             }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                onLike()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                                 dragOffset = .zero
                             }
                         } else {
@@ -73,11 +73,11 @@ struct DiscoverCardStack: View {
             .padding(.horizontal, 20)
             .onChange(of: buttonSwipeDirection) { _, dir in
                 guard let dir = dir else { return }
-                withAnimation(.easeOut(duration: 0.3)) {
+                if dir < 0 { onPass() } else { onLike() }
+                withAnimation(.easeOut(duration: 0.2)) {
                     dragOffset = CGSize(width: dir * 500, height: 0)
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                    if dir < 0 { onPass() } else { onLike() }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     dragOffset = .zero
                     buttonSwipeDirection = nil
                 }

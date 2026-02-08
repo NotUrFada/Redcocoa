@@ -39,9 +39,10 @@ struct DiscoverView: View {
                     MatchOverlayView(
                         matchedName: matched.name,
                         onDismiss: {
-                            selectedChatId = matched.id
                             showMatchOverlay = false
                             matchedProfile = nil
+                            viewModel.advance()
+                            NotificationCenter.default.post(name: .openChatFromMatch, object: matched.id)
                         }
                     )
                     .transition(.opacity)

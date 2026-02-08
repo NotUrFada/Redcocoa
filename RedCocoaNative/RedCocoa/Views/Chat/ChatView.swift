@@ -234,10 +234,10 @@ struct ChatView: View {
     
     private func startRefreshTimer() {
         refreshTimer?.invalidate()
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             Task { @MainActor in
                 await load()
-                if let mid = matchId, let uid = auth.user?.id {
+                if let mid = matchId, auth.user?.id != nil {
                     otherIsTyping = await APIService.isOtherTyping(matchId: mid, otherId: otherId)
                 }
             }
@@ -262,7 +262,7 @@ struct ChatView: View {
     @ViewBuilder
     private func readReceiptView(for message: ChatMessage) -> some View {
         Group {
-            if let readAt = message.readAt {
+            if message.readAt != nil {
                 let isLeftOnRead = isLastMessageFromMe(message) && !hasReplyAfter(message)
                 Text(isLeftOnRead ? "Left on read" : "Read")
                     .font(.caption2)

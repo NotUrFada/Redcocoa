@@ -141,8 +141,20 @@ Supabase uses **Twilio** for SMS.
 
 If you see "new row violates row-level security policy" when saving profiles or photos, run the SQL in `supabase_rls_policies.sql` in the Supabase SQL Editor. It creates the profile trigger, RLS policies, and storage policies for avatars.
 
+## Delete Account (Edge Function)
+
+The app uses a Supabase Edge Function to delete user accounts, including all storage files (photos, videos) and auth data. Deploy it once:
+
+```bash
+cd /path/to/red-cocoa
+supabase functions deploy delete-user
+```
+
+This requires the Supabase CLI and `supabase link` to your project.
+
 ## Troubleshooting
 
 - **Apple**: “Invalid configuration” → check bundle ID and entitlement
 - **Google**: Nothing happens or redirect fails → check redirect URI in Google and Supabase
 - **Phone**: “SMS failed” → check Twilio credentials, trial limits, and verified numbers
+- **Delete Account fails**: Ensure `delete-user` Edge Function is deployed (`supabase functions deploy delete-user`)

@@ -68,40 +68,52 @@ enum APIService {
         
         let likes: [LikeRow] = (try? await client.from("likes").select("from_user_id").eq("to_user_id", value: userId).execute().value) ?? []
         let matchRows: [MatchRow] = (try? await client.from("matches").select("user1_id, user2_id").execute().value) ?? []
-        let matchIds = Set(matchRows.flatMap { [$0.user1_id, $0.user2_id] }.filter { $0 != userId })
+        let uid = userId.lowercased()
+        let matchIdsLower = Set(matchRows.flatMap { [$0.user1_id, $0.user2_id] }.filter { $0.lowercased() != uid }.map { $0.lowercased() })
         
-        let ids = Array(Set(likes.map { $0.from_user_id }))
-        guard !ids.isEmpty else { return [] }
+        // Matches: include in Likes with isMatch true (matches first)
+        var matchProfiles: [LikeWithProfile] = []
+        if !matchIdsLower.isEmpty {
+            let matchIds = Array(matchIdsLower)
+            let matchProfs: [Profile] = (try? await client.from("profiles").select().in("id", values: matchIds).execute().value) ?? []
+            matchProfiles = matchProfs.map { LikeWithProfile(profile: $0, status: "Match", isMatch: true) }
+        }
         
-        // Exclude matches—they belong in Chats, not Likes
-        let likeIds = ids.filter { !matchIds.contains($0) }
-        guard !likeIds.isEmpty else { return [] }
+        // Non-match likes
+        let likeIds = likes.map { $0.from_user_id }.filter { !matchIdsLower.contains($0.lowercased()) }
+        guard !likeIds.isEmpty || !matchProfiles.isEmpty else { return [] }
         
-        let profs: [Profile] = (try? await client.from("profiles").select().in("id", values: likeIds).execute().value) ?? []
-        let byId = Dictionary(uniqueKeysWithValues: profs.map { ($0.id, $0) })
-        
-        return likes
-            .filter { !matchIds.contains($0.from_user_id) }
-            .map { like in
-                let p = byId[like.from_user_id] ?? Profile(id: like.from_user_id, name: "Unknown")
-                return LikeWithProfile(profile: p, status: "Liked you", isMatch: false)
-            }
+        var result = matchProfiles
+        if !likeIds.isEmpty {
+            let ids = Array(Set(likeIds))
+            let profs: [Profile] = (try? await client.from("profiles").select().in("id", values: ids).execute().value) ?? []
+            let byId = Dictionary(uniqueKeysWithValues: profs.map { ($0.id, $0) })
+            let likeItems = likes
+                .filter { !matchIdsLower.contains($0.from_user_id.lowercased()) }
+                .map { like in
+                    let p = byId[like.from_user_id] ?? Profile(id: like.from_user_id, name: "Unknown")
+                    return LikeWithProfile(profile: p, status: "Liked you", isMatch: false)
+                }
+            result.append(contentsOf: likeItems)
+        }
+        return result
     }
     
     // MARK: - Chats
     static func getChats(userId: String) async throws -> [ChatPreview] {
         guard let client = client, userId != "demo" else {
-            return MockData.profiles.prefix(2).map { ChatPreview(id: $0.id, name: $0.name, image: $0.primaryPhoto, lastMessage: "No messages yet", time: "") }
+            return MockData.profiles.prefix(2).map { ChatPreview(id: $0.id, name: $0.name, image: $0.primaryPhoto, lastMessage: "No messages yet", time: "", dateStr: "") }
         }
         
         struct MatchRow: Decodable { let id: String, user1_id: String, user2_id: String }
         let matches: [MatchRow] = (try? await client.from("matches").select("id, user1_id, user2_id").execute().value) ?? []
-        let relevant = matches.filter { $0.user1_id == userId || $0.user2_id == userId }
-        let otherIds = relevant.map { $0.user1_id == userId ? $0.user2_id : $0.user1_id }
+        let uid = userId.lowercased()
+        let relevant = matches.filter { $0.user1_id.lowercased() == uid || $0.user2_id.lowercased() == uid }
+        let otherIds = relevant.map { $0.user1_id.lowercased() == uid ? $0.user2_id : $0.user1_id }
         guard !otherIds.isEmpty else { return [] }
         
         let matchByOther = Dictionary(uniqueKeysWithValues: relevant.map { row in
-            let other = row.user1_id == userId ? row.user2_id : row.user1_id
+            let other = row.user1_id.lowercased() == uid ? row.user2_id : row.user1_id
             return (other, row)
         })
         
@@ -116,18 +128,22 @@ enum APIService {
             if lastByMatch[msg.match_id] == nil { lastByMatch[msg.match_id] = msg }
         }
         
-        let outFormatter = DateFormatter()
-        outFormatter.dateFormat = "h:mm a"
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "h:mm a"
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "M/d/yyyy"
         
         return otherIds.map { id in
             let p = profById[id]
             let m = matchByOther[id]
             let last = m.flatMap { lastByMatch[$0.id] }
-            let timeStr: String
+            var timeStr = ""
+            var dateStr = ""
             if let d = last.flatMap({ ISO8601DateFormatter().date(from: $0.created_at) }) {
-                timeStr = outFormatter.string(from: d)
-            } else { timeStr = "" }
-            return ChatPreview(id: id, name: p?.name ?? "Unknown", image: p?.primaryPhoto, lastMessage: last?.content ?? "Tap to chat", time: timeStr)
+                timeStr = timeFormatter.string(from: d)
+                dateStr = dateFormatter.string(from: d)
+            }
+            return ChatPreview(id: id, name: p?.name ?? "Unknown", image: p?.primaryPhoto, lastMessage: last?.content ?? "Tap to chat", time: timeStr, dateStr: dateStr)
         }
     }
     
@@ -174,7 +190,7 @@ enum APIService {
         guard let client = client, userId != "demo" else { return }
         struct ReadUpdate: Encodable { let read_at: String }
         let now = ISO8601DateFormatter().string(from: Date())
-        try? await client.from("messages").update(ReadUpdate(read_at: now)).eq("match_id", value: matchId).neq("sender_id", value: userId).execute()
+        _ = try? await client.from("messages").update(ReadUpdate(read_at: now)).eq("match_id", value: matchId).neq("sender_id", value: userId).execute()
     }
     
     static func setTyping(matchId: String, userId: String) async throws {
@@ -185,12 +201,12 @@ enum APIService {
             let updated_at: String
         }
         let now = ISO8601DateFormatter().string(from: Date())
-        try? await client.from("typing_indicators").upsert(TypingRow(match_id: matchId, user_id: userId, updated_at: now), onConflict: "match_id, user_id").execute()
+        _ = try? await client.from("typing_indicators").upsert(TypingRow(match_id: matchId, user_id: userId, updated_at: now), onConflict: "match_id, user_id").execute()
     }
     
     static func clearTyping(matchId: String, userId: String) async throws {
         guard let client = client, userId != "demo" else { return }
-        try? await client.from("typing_indicators").delete().eq("match_id", value: matchId).eq("user_id", value: userId).execute()
+        _ = try? await client.from("typing_indicators").delete().eq("match_id", value: matchId).eq("user_id", value: userId).execute()
     }
     
     static func isOtherTyping(matchId: String, otherId: String) async -> Bool {
@@ -413,6 +429,7 @@ struct ChatPreview: Identifiable {
     let image: String?
     let lastMessage: String
     let time: String
+    let dateStr: String
 }
 
 struct ChatMessage: Identifiable {
