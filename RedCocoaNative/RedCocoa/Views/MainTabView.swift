@@ -27,7 +27,6 @@ struct MainTabView: View {
                     likesRefreshTrigger = UUID()
                 }
             )
-                .smoothAppear()
                 .tabItem {
                     Image(systemName: "square.grid.2x2")
                     Text("Discover")

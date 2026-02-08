@@ -21,10 +21,10 @@ struct DiscoverView: View {
                         .foregroundStyle(Color.textOnDark)
                 } else if viewModel.profiles.isEmpty || viewModel.currentProfile == nil {
                     EmptyDiscoverView(onAdjustFilters: {})
-                        .smoothAppear()
                 } else if let profile = viewModel.currentProfile {
                     DiscoverCardStack(
                         profile: profile,
+                        preloadedImage: viewModel.preloadedImage,
                         onPass: { viewModel.pass() },
                         onLike: { viewModel.like { matched in
                             matchedProfile = matched
@@ -34,7 +34,6 @@ struct DiscoverView: View {
                         onMessage: { selectedChatId = profile.id },
                         onTap: { selectedProfileId = profile.id }
                     )
-                    .smoothAppear()
                 }
                 
                 if showMatchOverlay, let matched = matchedProfile {

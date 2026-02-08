@@ -1,11 +1,13 @@
 import Foundation
 import Supabase
+import UIKit
 
 @MainActor
 class DiscoverViewModel: ObservableObject {
     @Published var profiles: [Profile] = []
     @Published var currentIndex = 0
     @Published var loading = true
+    @Published var preloadedImage: UIImage?
     
     private var passedIds: Set<String> = []
     var userId: String?
@@ -17,6 +19,7 @@ class DiscoverViewModel: ObservableObject {
     
     func load(userId: String) async {
         self.userId = userId
+        preloadedImage = nil
         guard !userId.isEmpty, userId != "demo" else {
             profiles = MockData.profiles
             currentIndex = 0
@@ -36,12 +39,22 @@ class DiscoverViewModel: ObservableObject {
                 ethnicityFilter: ethnicityFilter
             )
             currentIndex = 0
+            if let first = profiles.first?.primaryPhoto, let url = URL(string: first), !first.isEmpty {
+                preloadedImage = await loadImage(from: url)
+            }
             loading = false
+            preloadNextIfNeeded()
         } catch {
             profiles = MockData.profiles
             currentIndex = 0
             loading = false
         }
+    }
+    
+    private func loadImage(from url: URL) async -> UIImage? {
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let image = UIImage(data: data) else { return nil }
+        return image
     }
     
     func pass() {
@@ -78,6 +91,24 @@ class DiscoverViewModel: ObservableObject {
     func advance() {
         if currentIndex < profiles.count - 1 {
             currentIndex += 1
+            preloadedImage = preloadedNextImage
+            preloadedNextImage = nil
+            preloadNextIfNeeded()
+        }
+    }
+    
+    private var preloadedNextImage: UIImage?
+    
+    private func preloadNextIfNeeded() {
+        let nextIndex = currentIndex + 1
+        guard nextIndex < profiles.count,
+              let urlString = profiles[nextIndex].primaryPhoto,
+              let url = URL(string: urlString), !urlString.isEmpty else { return }
+        Task {
+            let img = await loadImage(from: url)
+            await MainActor.run {
+                if currentIndex + 1 == nextIndex { preloadedNextImage = img }
+            }
         }
     }
 }

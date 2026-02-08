@@ -1,7 +1,9 @@
 import SwiftUI
+import UIKit
 
 struct DiscoverCardStack: View {
     let profile: Profile
+    var preloadedImage: UIImage? = nil
     let onPass: () -> Void
     let onLike: () -> Void
     let onMessage: () -> Void
@@ -18,7 +20,7 @@ struct DiscoverCardStack: View {
         VStack(spacing: 0) {
             // Card - fills available space with swipe gestures
             ZStack {
-                ProfileCardView(profile: profile)
+                ProfileCardView(profile: profile, preloadedImage: preloadedImage)
                     .overlay(alignment: .leading) {
                         if dragOffset.width < -30 {
                             SwipeOverlay(label: "NOPE", color: .red, rotation: -15)
@@ -130,43 +132,41 @@ struct DiscoverCardStack: View {
 
 struct ProfileCardView: View {
     let profile: Profile
-    
-    private var placeholderView: some View {
-        Rectangle()
-            .fill(Color.bgCard)
-            .overlay {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 80))
-                    .foregroundStyle(Color.textMuted)
-            }
-    }
+    var preloadedImage: UIImage? = nil
     
     var body: some View {
         GeometryReader { geo in
+            let w = max(geo.size.width, 1)
+            let h = max(geo.size.height, 1)
             ZStack(alignment: .bottomLeading) {
-                // Full-bleed portrait
-                Group {
-                    if let urlString = profile.primaryPhoto, !urlString.isEmpty, let url = URL(string: urlString) {
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .empty:
-                                placeholderView
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            case .failure:
-                                placeholderView
-                            @unknown default:
-                                placeholderView
-                            }
+                Color.bgDark.frame(width: w, height: h)
+                // Preloaded image shows instantly; fallback to AsyncImage only if no preload
+                if let img = preloadedImage {
+                    Image(uiImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: w, height: h)
+                        .clipped()
+                } else if let urlString = profile.primaryPhoto, !urlString.isEmpty, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            Color.clear
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure:
+                            Color.clear
+                        @unknown default:
+                            Color.clear
                         }
-                    } else {
-                        placeholderView
                     }
+                    .frame(width: w, height: h)
+                    .clipped()
+                } else {
+                    Color.clear
                 }
-                .frame(width: geo.size.width, height: geo.size.height)
-                .clipped()
                 
                 // Brown gradient overlay (bottom to top)
                 LinearGradient(
