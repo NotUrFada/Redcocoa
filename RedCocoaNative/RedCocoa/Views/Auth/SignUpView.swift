@@ -8,6 +8,10 @@ struct SignUpView: View {
     @State private var password = ""
     @State private var error: String?
     @State private var loading = false
+    @State private var showTitle = false
+    @State private var showForm = false
+    @State private var showDivider = false
+    @State private var showSocial = false
     
     var body: some View {
         ScrollView {
@@ -16,6 +20,8 @@ struct SignUpView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundStyle(Color.textOnDark)
+                    .opacity(showTitle ? 1 : 0)
+                    .offset(y: showTitle ? 0 : 24)
                 
                 VStack(spacing: 16) {
                     if let error = error {
@@ -66,13 +72,19 @@ struct SignUpView: View {
                     .cornerRadius(24)
                     .fontWeight(.semibold)
                     .disabled(loading || email.isEmpty || password.isEmpty || password.count < 6)
+                }
+                .padding(.horizontal)
+                .opacity(showForm ? 1 : 0)
+                .offset(y: showForm ? 0 : 24)
+                
+                Text("or")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.textMuted)
+                    .opacity(showDivider ? 1 : 0)
+                    .offset(y: showDivider ? 0 : 20)
                     
-                    Text("or")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.textMuted)
-                    
-                    VStack(spacing: 12) {
-                        Button {
+                VStack(spacing: 12) {
+                    Button {
                             Task {
                                 error = nil
                                 loading = true
@@ -145,6 +157,8 @@ struct SignUpView: View {
                     }
                 }
                 .padding(.horizontal)
+                .opacity(showSocial ? 1 : 0)
+                .offset(y: showSocial ? 0 : 24)
             }
             .padding()
         }
@@ -153,6 +167,18 @@ struct SignUpView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("Sign Up")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.5)) { showTitle = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.easeOut(duration: 0.5)) { showForm = true }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                withAnimation(.easeOut(duration: 0.5)) { showDivider = true }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                withAnimation(.easeOut(duration: 0.5)) { showSocial = true }
+            }
+        }
     }
     
     private func signUp() async {

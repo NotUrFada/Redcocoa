@@ -37,6 +37,7 @@ struct EditProfileView: View {
     @State private var promptResponses: [String: String] = [:]
     @State private var saving = false
     @State private var error: String?
+    @State private var showProfilePreview = false
     
     var body: some View {
         Form {
@@ -215,6 +216,15 @@ struct EditProfileView: View {
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    showProfilePreview = true
+                } label: {
+                    Image(systemName: "eye")
+                    Text("Preview")
+                }
+                .foregroundStyle(Color.brand)
+            }
             ToolbarItem(placement: .confirmationAction) {
                 if saveSuccess {
                     HStack(spacing: 6) {
@@ -229,6 +239,11 @@ struct EditProfileView: View {
                     }
                     .disabled(saving || name.isEmpty)
                 }
+            }
+        }
+        .sheet(isPresented: $showProfilePreview) {
+            NavigationStack {
+                ProfilePreviewView()
             }
         }
         .onAppear {

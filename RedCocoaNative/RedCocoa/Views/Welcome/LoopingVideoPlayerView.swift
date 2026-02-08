@@ -1,5 +1,6 @@
 import SwiftUI
 import AVKit
+import AVFoundation
 
 struct LoopingVideoPlayerView: UIViewRepresentable {
     let videoName: String
@@ -22,9 +23,10 @@ struct LoopingVideoPlayerView: UIViewRepresentable {
 }
 
 private final class PlayerUIView: UIView {
-    private var player: AVQueuePlayer?
+    private var player: AVPlayer?
     private var playerLayer: AVPlayerLayer?
-    private var looper: AVPlayerLooper?
+    private var loopObserver: NSObjectProtocol?
+    private var didBecomeActiveObserver: NSObjectProtocol?
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -35,20 +37,44 @@ private final class PlayerUIView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    deinit {
+        loopObserver.map { NotificationCenter.default.removeObserver($0) }
+        didBecomeActiveObserver.map { NotificationCenter.default.removeObserver($0) }
+    }
+    
     func configure(url: URL) {
-        let item = AVPlayerItem(url: url)
-        let queuePlayer = AVQueuePlayer(playerItem: item)
-        queuePlayer.isMuted = true
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
         
-        let layer = AVPlayerLayer(player: queuePlayer)
+        let item = AVPlayerItem(url: url)
+        let avPlayer = AVPlayer(playerItem: item)
+        avPlayer.isMuted = true
+        avPlayer.automaticallyWaitsToMinimizeStalling = false
+        
+        let layer = AVPlayerLayer(player: avPlayer)
         layer.videoGravity = .resizeAspectFill
         self.layer.insertSublayer(layer, at: 0)
         
-        looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
-        queuePlayer.play()
-        
-        player = queuePlayer
+        player = avPlayer
         playerLayer = layer
+        
+        loopObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            self?.player?.seek(to: .zero)
+            self?.player?.play()
+        }
+        
+        didBecomeActiveObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.player?.play()
+        }
+        
+        avPlayer.play()
     }
     
     override func layoutSubviews() {

@@ -9,6 +9,11 @@ struct LoginView: View {
     @State private var loading = false
     @State private var showSignUp = false
     @State private var showForgotPassword = false
+    @State private var showHeader = false
+    @State private var showForm = false
+    @State private var showDivider = false
+    @State private var showSocial = false
+    @State private var showFooter = false
     
     var body: some View {
         NavigationStack {
@@ -16,18 +21,22 @@ struct LoginView: View {
                 VStack(spacing: 24) {
                     Spacer().frame(height: 40)
                     
-                    Image("Logo")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 56, height: 56)
-                    
-                    Text("Red Cocoa")
-                        .font(.interThin(size: 28))
-                        .foregroundStyle(Color.textOnDark)
-                    
-                    Text("Find your perfect match")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.textMuted)
+                    Group {
+                        Image("Logo")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 56, height: 56)
+                        
+                        Text("Red Cocoa")
+                            .font(.interThin(size: 28))
+                            .foregroundStyle(Color.textOnDark)
+                        
+                        Text("Find your perfect match")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.textMuted)
+                    }
+                    .opacity(showHeader ? 1 : 0)
+                    .offset(y: showHeader ? 0 : 24)
                     
                     VStack(spacing: 16) {
                         if let error = error {
@@ -84,10 +93,14 @@ struct LoginView: View {
                         .disabled(loading || email.isEmpty || password.isEmpty)
                     }
                     .padding(.horizontal)
+                    .opacity(showForm ? 1 : 0)
+                    .offset(y: showForm ? 0 : 24)
                     
                     Text("or")
                         .font(.subheadline)
                         .foregroundStyle(Color.textMuted)
+                        .opacity(showDivider ? 1 : 0)
+                        .offset(y: showDivider ? 0 : 20)
                     
                     VStack(spacing: 12) {
                         Button {
@@ -158,6 +171,8 @@ struct LoginView: View {
                         .disabled(loading)
                     }
                     .padding(.horizontal)
+                    .opacity(showSocial ? 1 : 0)
+                    .offset(y: showSocial ? 0 : 24)
                     
                     HStack {
                         Text("Don't have an account?")
@@ -169,6 +184,8 @@ struct LoginView: View {
                         .fontWeight(.semibold)
                     }
                     .font(.subheadline)
+                    .opacity(showFooter ? 1 : 0)
+                    .offset(y: showFooter ? 0 : 20)
                     
                     Spacer().frame(height: 40)
                 }
@@ -202,6 +219,21 @@ struct LoginView: View {
                         }
                     }
             )
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.5)) { showHeader = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    withAnimation(.easeOut(duration: 0.5)) { showForm = true }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    withAnimation(.easeOut(duration: 0.5)) { showDivider = true }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation(.easeOut(duration: 0.5)) { showSocial = true }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
+                    withAnimation(.easeOut(duration: 0.5)) { showFooter = true }
+                }
+            }
             .navigationDestination(isPresented: $showSignUp) {
                 SignUpView()
             }

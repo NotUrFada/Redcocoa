@@ -29,6 +29,7 @@
 		7C729651D503F46E649AC74A /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4421D21BABD5BBC6ABF0996 /* LocationManager.swift */; };
 		7CFAFECB45C1FA7BB33F2E86 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A1A2C36BA6B2198F3AB06E /* OnboardingView.swift */; };
 		8541E56D8955A49C778C945F /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CBE131D3C98468EAD124CD0 /* ProfileView.swift */; };
+		PROF001557691122F0D8658B /* ProfilePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PROF0022557691122F0D8658C /* ProfilePreviewView.swift */; };
 		861CCF5272120D4BE5925248 /* ProfileOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407F55133CF58BAF5F83C0BC /* ProfileOptions.swift */; };
 		88433C4FD798C1C4FFA4ABC1 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2764C9B8A7551C83E55B3E6 /* SplashView.swift */; };
 		8ADADD79C329BB8AEBB6EFFE /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75D05FE534B33D36FD828457 /* CoreLocation.framework */; };
@@ -74,6 +75,7 @@
 		54D0609B047AF3CEF3605B0F /* Font+Brand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+Brand.swift"; sourceTree = "<group>"; };
 		57BDBCEC37E66BEEEE1B2C72 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		5CBE131D3C98468EAD124CD0 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		PROF0022557691122F0D8658C /* ProfilePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePreviewView.swift; sourceTree = "<group>"; };
 		66F30FBF3C125B513699C974 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		69208C3369F52016960C20EA /* ProfileSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSetupView.swift; sourceTree = "<group>"; };
 		6FC0C15659B4F6ED06F5C15A /* RedCocoa.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RedCocoa.entitlements; sourceTree = "<group>"; };
@@ -249,6 +251,7 @@
 			isa = PBXGroup;
 			children = (
 				5CBE131D3C98468EAD124CD0 /* ProfileView.swift */,
+				PROF0022557691122F0D8658C /* ProfilePreviewView.swift */,
 				VID0022557691122F0D8658C /* VideoThumbnailView.swift */,
 			);
 			path = Profile;
@@ -430,6 +433,7 @@
 				861CCF5272120D4BE5925248 /* ProfileOptions.swift in Sources */,
 				66C06820B3A328894DF305DA /* ProfileSetupView.swift in Sources */,
 				8541E56D8955A49C778C945F /* ProfileView.swift in Sources */,
+				PROF001557691122F0D8658B /* ProfilePreviewView.swift in Sources */,
 				VID0011557691122F0D8658B /* VideoThumbnailView.swift in Sources */,
 				5A0C57843547A52D1E34F8B5 /* RedCocoaApp.swift in Sources */,
 				F121F4161713DA5ED299EE7E /* RootView.swift in Sources */,

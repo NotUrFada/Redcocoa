@@ -8,6 +8,7 @@ struct DiscoverView: View {
     @State private var showFilters = false
     @State private var showMatchOverlay = false
     @State private var matchedProfile: Profile?
+    @State private var showProfilePreview = false
     var profileRefreshTrigger: UUID = UUID()
     var onProfileTap: (() -> Void)? = nil
     var onMatch: (() -> Void)? = nil
@@ -52,7 +53,15 @@ struct DiscoverView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    profileAvatar
+                    HStack(spacing: 12) {
+                        profileAvatar
+                        Button {
+                            showProfilePreview = true
+                        } label: {
+                            Image(systemName: "eye")
+                                .foregroundStyle(Color.brand)
+                        }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -61,6 +70,11 @@ struct DiscoverView: View {
                         Image(systemName: "slider.horizontal.3")
                     }
                     .foregroundStyle(Color.brand)
+                }
+            }
+            .sheet(isPresented: $showProfilePreview) {
+                NavigationStack {
+                    ProfilePreviewView()
                 }
             }
             .sheet(isPresented: $showFilters) {

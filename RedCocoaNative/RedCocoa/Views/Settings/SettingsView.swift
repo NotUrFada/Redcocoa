@@ -55,6 +55,7 @@ struct SettingsView: View {
                 
                 Section("Account") {
                     NavigationLink(destination: EditProfileView()) { Text("Edit Profile").foregroundStyle(Color.textOnDark) }
+                    NavigationLink(destination: ProfilePreviewView()) { Text("Preview Profile").foregroundStyle(Color.textOnDark) }
                     NavigationLink(destination: PhoneNumberView()) { Text("Phone Number").foregroundStyle(Color.textOnDark) }
                 }
                 .listRowBackground(Color.bgCard)

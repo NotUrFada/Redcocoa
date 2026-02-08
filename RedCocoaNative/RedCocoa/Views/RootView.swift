@@ -11,6 +11,11 @@ struct RootView: View {
                 mainContent
             } else {
                 ZStack {
+                    // Video starts playing immediately (during splash) so it's ready when user sees welcome
+                    LoopingVideoPlayerView(videoName: "WelcomeVideo", fileExtension: "mp4")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .ignoresSafeArea()
+                    
                     SplashView()
                         .opacity(splashFinished ? 0 : 1)
                         .allowsHitTesting(!splashFinished)

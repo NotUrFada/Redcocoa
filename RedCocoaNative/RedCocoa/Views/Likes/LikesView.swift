@@ -38,13 +38,13 @@ struct LikesView: View {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 20) {
                                 Text("People who liked you")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundStyle(Color.textOnDark)
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(Color.textOnDark.opacity(0.9))
                                     .padding(.horizontal, 16)
                                 
                                 LazyVGrid(columns: [
-                                    GridItem(.flexible(), spacing: 12),
-                                    GridItem(.flexible(), spacing: 12)
+                                    GridItem(.flexible(minimum: 140), spacing: 12),
+                                    GridItem(.flexible(minimum: 140), spacing: 12)
                                 ], spacing: 12) {
                                     ForEach(likes, id: \.profile.id) { item in
                                         LikesCardView(
@@ -63,6 +63,7 @@ struct LikesView: View {
                                             }
                                         )
                                         .frame(minWidth: 0, maxWidth: .infinity)
+                                        .clipped()
                                         .buttonStyle(.plain)
                                     }
                                 }
@@ -82,7 +83,7 @@ struct LikesView: View {
                             Text("Likes & Matches")
                                 .font(.headline)
                                 .foregroundStyle(Color.textOnDark)
-                            Text("Discover who's interested in you")
+                            Text("People who discovered you")
                                 .font(.caption)
                                 .foregroundStyle(Color.textMuted)
                         }
@@ -153,64 +154,67 @@ struct LikesCardView: View {
         return URL(string: urlString)
     }
     
+    private var displayName: String {
+        let n = profile.name.trimmingCharacters(in: .whitespaces)
+        return n.isEmpty ? "Someone" : n
+    }
+    
     private var locationText: String {
-        profile.location ?? "Current location"
+        profile.location ?? "Location unknown"
     }
     
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 0) {
-                // Image area with MATCH badge overlay (kept inside bounds)
-                ZStack(alignment: .topTrailing) {
-                    Group {
-                        if let url = photoURL {
-                            AsyncImage(url: url) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                case .failure:
-                                    placeholder
-                                case .empty:
-                                    ZStack {
-                                        Color.bgCard
-                                        ProgressView()
-                                            .tint(Color.textMuted)
-                                    }
-                                @unknown default:
-                                    placeholder
+                // Image area with MATCH badge - clip applied last so badge stays inside
+                Group {
+                    if let url = photoURL {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            case .failure:
+                                placeholder
+                            case .empty:
+                                ZStack {
+                                    Color.bgCard
+                                    ProgressView()
+                                        .tint(Color.textMuted)
                                 }
+                            @unknown default:
+                                placeholder
                             }
-                        } else {
-                            placeholder
                         }
+                    } else {
+                        placeholder
                     }
-                    .frame(height: 180)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                    
+                }
+                .frame(height: 180)
+                .frame(maxWidth: .infinity)
+                .overlay(alignment: .topTrailing) {
                     if isMatch {
                         Text("MATCH")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
                             .background(Color.brand)
                             .clipShape(Capsule())
                             .padding(8)
                     }
                 }
-                .frame(maxWidth: .infinity)
                 .clipped()
+                .frame(maxWidth: .infinity)
                 
                 // Info area - fixed height for consistent alignment
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(profile.name), \(profile.displayAge.map { String($0) } ?? "?")")
+                    Text("\(displayName), \(profile.displayAge.map { String($0) } ?? "?")")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(Color.textOnDark)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.7)
                     
                     HStack(spacing: 4) {
                         Image(systemName: "mappin")
@@ -220,7 +224,8 @@ struct LikesCardView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(Color.textMuted)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .minimumScaleFactor(0.7)
+                            .truncationMode(.tail)
                     }
                     
                     if isMatch {
