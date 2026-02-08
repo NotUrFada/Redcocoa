@@ -127,8 +127,8 @@ struct ProfileSetupView: View {
                                         }
                                     }
                                     await MainActor.run {
-                                        let maxPhotos = 6 - existingPhotoUrls.count
-                                        let toAdd = loaded.prefix(max(0, maxPhotos - identifiablePhotos.count))
+                                        let maxToAdd = totalSlots - photoCount - videoCount
+                                        let toAdd = loaded.prefix(max(0, maxToAdd))
                                         identifiablePhotos.append(contentsOf: toAdd)
                                         photoItems = []
                                         photoPickerResetId = UUID()

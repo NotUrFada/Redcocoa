@@ -1,0 +1,3 @@
+# Skip gateway JWT verification for delete-user - we verify the JWT inside the function
+[functions.delete-user]
+verify_jwt = false

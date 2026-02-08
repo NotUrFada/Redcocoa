@@ -244,6 +244,12 @@ struct ChatsListView: View {
             .task(id: refreshTrigger) { await load() }
             .task(id: selectedTab) { if selectedTab == 2 { await load() } }
             .onChange(of: selectedChatId) { _, new in if new == nil { Task { await load() } } }
+            .onReceive(NotificationCenter.default.publisher(for: .chatsDidUpdate)) { _ in
+                Task {
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    await load()
+                }
+            }
             .onChange(of: openChatId) { _, new in
                 if let id = new {
                     selectedChatId = id
@@ -269,7 +275,18 @@ struct ChatsListView: View {
     
     private func load() async {
         do {
-            chats = try await APIService.getChats(userId: auth.user?.id ?? "")
+            var list = try await APIService.getChats(userId: auth.user?.id ?? "")
+            list.sort { c1, c2 in
+                let d1 = max(c1.lastMessageAt ?? .distantPast, ChatsOrderStore.getStoredTimestamp(for: c1.id) ?? .distantPast)
+                let d2 = max(c2.lastMessageAt ?? .distantPast, ChatsOrderStore.getStoredTimestamp(for: c2.id) ?? .distantPast)
+                return d1 > d2
+            }
+            for chat in list {
+                if let apiDate = chat.lastMessageAt {
+                    ChatsOrderStore.clearIfAPIHasCaughtUp(otherId: chat.id, apiLastMessageAt: apiDate)
+                }
+            }
+            chats = list
             let total = chats.reduce(0) { $0 + $1.unreadCount }
             await MainActor.run {
                 onUnreadCountChanged?(total)

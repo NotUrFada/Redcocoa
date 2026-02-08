@@ -92,7 +92,7 @@ struct SignUpView: View {
                                 try await auth.signInWithApple()
                                 dismiss()
                             } catch {
-                                self.error = error.localizedDescription
+                                self.error = AuthManager.friendlyAppleSignInError(error)
                             }
                             loading = false
                         }

@@ -10,6 +10,7 @@ struct LikesView: View {
     @State private var selectedChatId: String?
     @State private var showMatchOverlay = false
     @State private var matchedProfile: Profile?
+    @State private var showNotifications = false
     
     var body: some View {
         NavigationStack {
@@ -45,8 +46,7 @@ struct LikesView: View {
                                     .padding(.horizontal, 16)
                                 
                                 LazyVGrid(columns: [
-                                    GridItem(.flexible(minimum: 140), spacing: 12),
-                                    GridItem(.flexible(minimum: 140), spacing: 12)
+                                    GridItem(.adaptive(minimum: 200, maximum: 400), spacing: 12)
                                 ], spacing: 12) {
                                     ForEach(likes, id: \.profile.id) { item in
                                         LikesCardView(
@@ -65,7 +65,6 @@ struct LikesView: View {
                                             }
                                         )
                                         .frame(minWidth: 0, maxWidth: .infinity)
-                                        .clipped()
                                         .buttonStyle(.plain)
                                     }
                                 }
@@ -91,7 +90,9 @@ struct LikesView: View {
                         }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button { } label: {
+                        Button {
+                            showNotifications = true
+                        } label: {
                             Image(systemName: "bell")
                                 .foregroundStyle(Color.textOnDark)
                         }
@@ -110,6 +111,9 @@ struct LikesView: View {
                 }
                 .navigationDestination(item: $selectedChatId) { id in
                     ChatView(otherId: id)
+                }
+                .sheet(isPresented: $showNotifications) {
+                    NotificationsPlaceholderView()
                 }
                 .onAppear { Task { await load() } }
                 .task(id: refreshTrigger) { await load() }
@@ -150,6 +154,43 @@ struct LikesView: View {
         guard let userId = auth.user?.id else { return }
         try? await APIService.passOnProfile(userId: userId, passedId: id)
         likes.removeAll { $0.profile.id == id }
+    }
+}
+
+struct NotificationsPlaceholderView: View {
+    @Environment(\.dismiss) var dismiss
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Spacer()
+                Image(systemName: "bell.badge")
+                    .font(.system(size: 64))
+                    .foregroundStyle(Color.brand)
+                Text("Notifications")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.textOnDark)
+                Text("Manage your notification preferences in Profile → Settings.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.textMuted)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color.bgDark)
+            .navigationTitle("Notifications")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundStyle(Color.brand)
+                }
+            }
+        }
     }
 }
 
@@ -224,8 +265,10 @@ struct LikesCardView: View {
                     Text("\(displayName), \(profile.displayAge.map { String($0) } ?? "?")")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(Color.textOnDark)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     
                     HStack(spacing: 4) {
                         Image(systemName: "mappin")
@@ -235,8 +278,9 @@ struct LikesCardView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(Color.textMuted)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.7)
+                            .minimumScaleFactor(0.8)
                             .truncationMode(.tail)
+                            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                     }
                     
                     if isMatch {
@@ -284,7 +328,6 @@ struct LikesCardView: View {
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(Color.textMuted.opacity(0.15), lineWidth: 1)
             )
-            .clipped()
         }
         .buttonStyle(.plain)
     }

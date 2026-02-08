@@ -21,21 +21,6 @@ struct ProfilePreviewView: View {
                         .padding(.horizontal, 24)
                     
                     Spacer()
-                    
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text("Done")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.brand)
-                            .cornerRadius(14)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 40)
                 }
             } else {
                 VStack(spacing: 16) {

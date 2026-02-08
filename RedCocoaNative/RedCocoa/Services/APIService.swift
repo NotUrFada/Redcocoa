@@ -83,22 +83,28 @@ enum APIService {
         
         struct LikeRow: Decodable { let from_user_id: String }
         struct MatchRow: Decodable { let user1_id: String, user2_id: String }
+        struct PassedRow: Decodable { let passed_id: String }
+        
+        let passed: [PassedRow] = (try? await client.from("passed_users").select("passed_id").eq("user_id", value: userId).execute().value) ?? []
+        let passedIds = Set(passed.map { $0.passed_id.lowercased() })
         
         let likes: [LikeRow] = (try? await client.from("likes").select("from_user_id").eq("to_user_id", value: userId).execute().value) ?? []
         let matchRows: [MatchRow] = (try? await client.from("matches").select("user1_id, user2_id").execute().value) ?? []
         let uid = userId.lowercased()
         let matchIdsLower = Set(matchRows.flatMap { [$0.user1_id, $0.user2_id] }.filter { $0.lowercased() != uid }.map { $0.lowercased() })
         
-        // Matches: include in Likes with isMatch true (matches first)
+        // Matches: include in Likes with isMatch true (matches first), exclude passed
         var matchProfiles: [LikeWithProfile] = []
         if !matchIdsLower.isEmpty {
-            let matchIds = Array(matchIdsLower)
-            let matchProfs: [Profile] = (try? await client.from("profiles").select().in("id", values: matchIds).execute().value) ?? []
-            matchProfiles = matchProfs.map { LikeWithProfile(profile: $0, status: "Match", isMatch: true) }
+            let matchIds = Array(matchIdsLower.filter { !passedIds.contains($0) })
+            if !matchIds.isEmpty {
+                let matchProfs: [Profile] = (try? await client.from("profiles").select().in("id", values: matchIds).execute().value) ?? []
+                matchProfiles = matchProfs.map { LikeWithProfile(profile: $0, status: "Match", isMatch: true) }
+            }
         }
         
-        // Non-match likes
-        let likeIds = likes.map { $0.from_user_id }.filter { !matchIdsLower.contains($0.lowercased()) }
+        // Non-match likes, exclude passed
+        let likeIds = likes.map { $0.from_user_id }.filter { !matchIdsLower.contains($0.lowercased()) && !passedIds.contains($0.lowercased()) }
         guard !likeIds.isEmpty || !matchProfiles.isEmpty else { return [] }
         
         var result = matchProfiles
@@ -120,7 +126,7 @@ enum APIService {
     // MARK: - Chats
     static func getChats(userId: String) async throws -> [ChatPreview] {
         guard let client = client, userId != "demo" else {
-            return MockData.profiles.prefix(2).map { ChatPreview(id: $0.id, name: $0.name, image: $0.primaryPhoto, lastMessage: "No messages yet", time: "", dateStr: "", unreadCount: 0) }
+            return MockData.profiles.prefix(2).map { ChatPreview(id: $0.id, name: $0.name, image: $0.primaryPhoto, lastMessage: "No messages yet", time: "", dateStr: "", unreadCount: 0, lastMessageAt: nil) }
         }
         
         struct MatchRow: Decodable { let id: String, user1_id: String, user2_id: String }
@@ -183,7 +189,8 @@ enum APIService {
             }
             let lastContent = last?.content ?? "Tap to chat"
             let lastDisplay = lastContent.hasPrefix("voice:") ? "Voice message" : lastContent
-            return ChatPreview(id: id, name: p?.name ?? "Unknown", image: p?.primaryPhoto, lastMessage: lastDisplay, time: timeStr, dateStr: dateStr, unreadCount: unread)
+            let lastDate = last.flatMap { ISO8601DateFormatter().date(from: $0.created_at) }
+            return ChatPreview(id: id, name: p?.name ?? "Unknown", image: p?.primaryPhoto, lastMessage: lastDisplay, time: timeStr, dateStr: dateStr, unreadCount: unread, lastMessageAt: lastDate)
         }
     }
     
@@ -546,6 +553,7 @@ struct ChatPreview: Identifiable {
     let time: String
     let dateStr: String
     let unreadCount: Int
+    let lastMessageAt: Date?
 }
 
 struct CallInvite: Identifiable {

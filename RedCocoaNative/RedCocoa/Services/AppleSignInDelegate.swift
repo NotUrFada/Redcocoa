@@ -35,12 +35,18 @@ final class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, AS
     }
     
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        guard let window = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap({ $0.windows })
-            .first(where: { $0.isKeyWindow }) else {
-            return ASPresentationAnchor()
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            if let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
+                return keyWindow
+            }
+            if let window = windowScene.windows.first(where: { !$0.isHidden }) {
+                return window
+            }
+            if let first = windowScene.windows.first {
+                return first
+            }
         }
-        return window
+        return UIWindow()
     }
 }

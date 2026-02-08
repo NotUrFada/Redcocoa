@@ -98,17 +98,25 @@ class AuthManager: ObservableObject {
             UserDefaults.standard.removeObject(forKey: "onboardingComplete")
             return
         }
-        let userId = (try? await supabase.auth.session)?.user.id.uuidString ?? user?.id ?? ""
+        let session = try await supabase.auth.session
+        let userId = session.user.id.uuidString
+        let accessToken = session.accessToken
         
         do {
-            _ = try await supabase.functions.invoke("delete-user")
+            _ = try await supabase.functions.invoke(
+                "delete-user",
+                options: FunctionInvokeOptions(headers: ["Authorization": "Bearer \(accessToken)"])
+            )
         } catch {
             var message = "Failed to delete account"
             if let fe = error as? FunctionsError,
                case .httpError(_, let data) = fe,
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let errMsg = json["error"] as? String {
-                message = errMsg
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let detail = json["detail"] as? String, !detail.isEmpty {
+                    message = detail
+                } else if let errMsg = json["error"] as? String {
+                    message = errMsg
+                }
             } else if !error.localizedDescription.isEmpty, error.localizedDescription != "The operation couldn't be completed." {
                 message = error.localizedDescription
             }
@@ -129,6 +137,21 @@ class AuthManager: ObservableObject {
     }
     
     // MARK: - Sign in with Apple
+    static func friendlyAppleSignInError(_ error: Error) -> String {
+        let nsError = error as NSError
+        if nsError.domain.contains("AuthenticationServices") || nsError.domain.contains("AuthorizationError") {
+            switch nsError.code {
+            case 1000:
+                return "Sign in with Apple may not work in Simulator. Try on a real device, or sign in with email."
+            case 1001:
+                return "Sign in was canceled."
+            default:
+                break
+            }
+        }
+        return error.localizedDescription
+    }
+    
     func signInWithApple() async throws {
         guard let supabase = supabase else {
             user = AppUser(id: "demo", email: "demo@redcocoa.app")

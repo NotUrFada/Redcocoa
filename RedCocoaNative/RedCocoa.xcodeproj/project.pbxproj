@@ -55,6 +55,7 @@
 		F497B9D17EF6EB70C39E0C3E /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AB39DC549ED78A00F5EF93 /* WelcomeView.swift */; };
 		F71C9D19C35B48565F3C95C4 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327FE55C9C108096C8B81EF9 /* FlowLayout.swift */; };
 		CALL001557691122F0D8658B /* CallService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CALL0022557691122F0D8658C /* CallService.swift */; };
+		CHAT001557691122F0D8658B /* ChatsOrderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHAT0022557691122F0D8658C /* ChatsOrderStore.swift */; };
 		F8F4EC011AB637BF4030BB0B /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E863FC3F2BB61C8712AC0D67 /* APIService.swift */; };
 		FDE7311557691122F0D8658B /* ChatsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53FE7DDBFD2CD419D354ECD8 /* ChatsListView.swift */; };
 		VID0011557691122F0D8658B /* VideoThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = VID0022557691122F0D8658C /* VideoThumbnailView.swift */; };
@@ -113,6 +114,7 @@
 		E80043C1553B5077B23A3798 /* Inter-Thin.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Thin.ttf"; sourceTree = "<group>"; };
 		WELV0022557691122F0D8658C /* WelcomeVideo.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = WelcomeVideo.mp4; sourceTree = "<group>"; };
 		CALL0022557691122F0D8658C /* CallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallService.swift; sourceTree = "<group>"; };
+		CHAT0022557691122F0D8658C /* ChatsOrderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsOrderStore.swift; sourceTree = "<group>"; };
 		E863FC3F2BB61C8712AC0D67 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		F4421D21BABD5BBC6ABF0996 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		VID0022557691122F0D8658C /* VideoThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoThumbnailView.swift; sourceTree = "<group>"; };
@@ -225,6 +227,7 @@
 			isa = PBXGroup;
 			children = (
 				CALL0022557691122F0D8658C /* CallService.swift */,
+				CHAT0022557691122F0D8658C /* ChatsOrderStore.swift */,
 				E863FC3F2BB61C8712AC0D67 /* APIService.swift */,
 				86CC190F7CF623DCA7EC386B /* AppleSignInDelegate.swift */,
 				97FBD14A67EC7090C9078785 /* AuthManager.swift */,
@@ -428,6 +431,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CALL001557691122F0D8658B /* CallService.swift in Sources */,
+				CHAT001557691122F0D8658B /* ChatsOrderStore.swift in Sources */,
 				F8F4EC011AB637BF4030BB0B /* APIService.swift in Sources */,
 				484D4872B182AB67F1412715 /* AppleSignInDelegate.swift in Sources */,
 				0CD401861570A1AA28F6367D /* AuthManager.swift in Sources */,

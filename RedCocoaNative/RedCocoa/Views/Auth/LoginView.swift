@@ -110,7 +110,7 @@ struct LoginView: View {
                                 do {
                                     try await auth.signInWithApple()
                                 } catch {
-                                    self.error = error.localizedDescription
+                                    self.error = AuthManager.friendlyAppleSignInError(error)
                                 }
                                 loading = false
                             }

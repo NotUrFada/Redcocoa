@@ -83,7 +83,17 @@ struct ChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        if messages.isEmpty {
+                        if loading {
+                            VStack(spacing: 16) {
+                                ProgressView()
+                                    .tint(Color.textOnDark)
+                                Text("Loading conversation...")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Color.textMuted)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 48)
+                        } else if messages.isEmpty {
                             VStack(spacing: 12) {
                                 Image(systemName: "bubble.left.and.bubble.right")
                                     .font(.system(size: 48))
@@ -357,17 +367,25 @@ struct ChatView: View {
     
     @MainActor
     private func load() async {
+        let optimisticMessages = messages.filter { $0.id.hasPrefix("temp-") }
         do {
             otherProfile = try await APIService.getProfileById(otherId, userId: auth.user?.id)
             let mid = try await APIService.getMatchId(userId: auth.user?.id ?? "", otherId: otherId)
             matchId = mid
-            messages = try await APIService.getMessages(userId: auth.user?.id ?? "", otherId: otherId)
+            var serverMessages = try await APIService.getMessages(userId: auth.user?.id ?? "", otherId: otherId)
+            for opt in optimisticMessages {
+                let inServer = serverMessages.contains { $0.sent && $0.text == opt.text }
+                if !inServer {
+                    serverMessages.append(opt)
+                }
+            }
+            messages = serverMessages
             if let mid = mid, let uid = auth.user?.id {
                 try? await APIService.markMessagesAsRead(userId: uid, matchId: mid)
             }
         } catch {
             otherProfile = MockData.profiles.first { $0.id == otherId }
-            messages = []
+            messages = optimisticMessages
         }
         loading = false
     }
@@ -451,17 +469,17 @@ struct ChatView: View {
         guard !textToSend.isEmpty else { return }
         if text == nil { inputText = "" }
         let msg = ChatMessage(id: "temp-\(UUID().uuidString)", text: textToSend, time: "Now", sent: true, readAt: nil)
-        let insertIndex = messages.count
         messages.append(msg)
         Task {
             do {
                 try await APIService.sendMessage(userId: auth.user?.id ?? "", otherId: otherId, content: textToSend)
-                NotificationCenter.default.post(name: .chatsDidUpdate, object: nil)
-                await load()
+                ChatsOrderStore.setLastMessaged(otherId: otherId)
+                NotificationCenter.default.post(name: .chatsDidUpdate, object: otherId)
+                // Don't reload immediately - avoids message disappearing then reappearing. Timer will refresh.
             } catch {
                 await MainActor.run {
                     sendError = error.localizedDescription
-                    if insertIndex < messages.count { messages.remove(at: insertIndex) }
+                    messages.removeAll { $0.id == msg.id }
                 }
             }
         }
@@ -478,7 +496,8 @@ struct ChatView: View {
                 let url = try await APIService.uploadVoiceMessage(matchId: mid, userId: uid, audioData: audioData)
                 let content = "voice:\(url)"
                 try await APIService.sendMessage(userId: uid, otherId: otherId, content: content)
-                NotificationCenter.default.post(name: .chatsDidUpdate, object: nil)
+                ChatsOrderStore.setLastMessaged(otherId: otherId)
+                NotificationCenter.default.post(name: .chatsDidUpdate, object: otherId)
                 await load()
             } catch {
                 await MainActor.run {
