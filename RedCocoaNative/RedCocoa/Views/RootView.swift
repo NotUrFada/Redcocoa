@@ -5,6 +5,7 @@ struct RootView: View {
     @EnvironmentObject var auth: AuthManager
     @AppStorage("RedCocoa.v2.hasSeenWelcome") private var hasSeenWelcome = false
     @State private var splashFinished = false
+    @State private var mainTabViewKey = 0
     
     var body: some View {
         ZStack {
@@ -57,10 +58,16 @@ struct RootView: View {
                 OnboardingView()
             } else {
                 MainTabView()
+                    .id(mainTabViewKey)
             }
         }
         .transition(.opacity)
         .animation(.easeOut(duration: 0.35), value: "\(auth.loading)_\(auth.user?.id ?? "nil")_\(auth.onboardingComplete)")
+        .onChange(of: auth.user != nil && auth.onboardingComplete) { _, showingMainTab in
+            if showingMainTab {
+                mainTabViewKey += 1
+            }
+        }
     }
 }
 

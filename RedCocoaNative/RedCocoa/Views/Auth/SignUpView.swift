@@ -90,11 +90,12 @@ struct SignUpView: View {
                             loading = true
                             do {
                                 try await auth.signInWithApple()
+                                loading = false
                                 dismiss()
                             } catch {
                                 self.error = AuthManager.friendlyAppleSignInError(error)
+                                loading = false
                             }
-                            loading = false
                         }
                     } label: {
                         HStack {
@@ -117,11 +118,12 @@ struct SignUpView: View {
                             loading = true
                             do {
                                 try await auth.signInWithGoogle()
+                                loading = false
                                 dismiss()
                             } catch {
                                 self.error = error.localizedDescription
+                                loading = false
                             }
-                            loading = false
                         }
                     } label: {
                         HStack {

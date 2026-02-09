@@ -72,12 +72,17 @@ class AuthManager: ObservableObject {
             return
         }
         
-        _ = try await supabase.auth.signUp(
+        let response = try await supabase.auth.signUp(
             email: email,
             password: password,
             data: ["name": .string(name)]
         )
-        await checkSession()
+        if response.session != nil {
+            await checkSession()
+        } else if response.user != nil {
+            // Email confirmation required
+            throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Please check your email to confirm your account before signing in."])
+        }
     }
     
     func signOut() async {
@@ -199,14 +204,23 @@ class AuthManager: ObservableObject {
             onboardingComplete = true
             return
         }
+        // Must match Supabase Dashboard → Authentication → URL Configuration → Redirect URLs
         let redirectURL = URL(string: "com.redcocoa.app://auth/callback")!
-        _ = try await supabase.auth.signInWithOAuth(provider: .google, redirectTo: redirectURL)
-        await checkSession()
+        do {
+            _ = try await supabase.auth.signInWithOAuth(provider: .google, redirectTo: redirectURL)
+            await checkSession()
+        } catch {
+            let msg = error.localizedDescription
+            if msg.contains("redirect") || msg.contains("URL") {
+                throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Google sign-in failed. Add com.redcocoa.app://auth/callback to Supabase Dashboard → Authentication → URL Configuration → Redirect URLs."])
+            }
+            throw error
+        }
     }
     
     func handleAuthURL(_ url: URL) {
         Task { @MainActor in
-            _ = supabase?.auth.handle(url)
+            supabase?.auth.handle(url)
             await checkSession()
         }
     }
@@ -214,8 +228,17 @@ class AuthManager: ObservableObject {
     // MARK: - Sign in with phone
     func signInWithPhone(_ phone: String) async throws {
         guard let supabase = supabase else { return }
-        let normalized = phone.hasPrefix("+") ? phone : "+1\(phone.filter { $0.isNumber })"
-        try await supabase.auth.signInWithOTP(phone: normalized)
+        let digits = phone.filter { $0.isNumber }
+        let normalized = phone.hasPrefix("+") ? phone : (digits.count == 10 ? "+1\(digits)" : "+\(digits)")
+        do {
+            try await supabase.auth.signInWithOTP(phone: normalized)
+        } catch {
+            let msg = error.localizedDescription
+            if msg.contains("twilio") || msg.contains("SMS") || msg.lowercased().contains("phone") {
+                throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Phone sign-in failed. Ensure Twilio is configured in Supabase Dashboard → Authentication → Providers → Phone, and use E.164 format (e.g. +15551234567)."])
+            }
+            throw error
+        }
     }
     
     func verifyPhoneOTP(phone: String, token: String) async throws {

@@ -242,11 +242,20 @@ struct EditProfileView: View {
                         Text("Saved")
                             .foregroundStyle(.green)
                     }
+                } else if saving {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .scaleEffect(0.9)
+                            .tint(Color.brand)
+                        Text("Uploading...")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.textMuted)
+                    }
                 } else {
                     Button("Save") {
                         Task { await save() }
                     }
-                    .disabled(saving || name.isEmpty)
+                    .disabled(name.isEmpty)
                 }
             }
         }
@@ -329,11 +338,12 @@ struct EditProfileView: View {
             }
             let photoCount = existingPhotoUrls.count + identifiablePhotos.count
             let videoCount = existingVideoUrls.count + identifiableVideoData.count
-            let totalSlots = 9
-            if photoCount + videoCount < totalSlots {
+            let maxPhotos = 9
+            let maxVideos = 3
+            if photoCount < maxPhotos {
                 PhotosPicker(
                     selection: $photoItems,
-                    maxSelectionCount: totalSlots - photoCount - videoCount,
+                    maxSelectionCount: maxPhotos - photoCount,
                     matching: .images
                 ) {
                     addSlotLabel("Add photo", cellSize: cellSize)
@@ -351,7 +361,7 @@ struct EditProfileView: View {
                             }
                         }
                         await MainActor.run {
-                            let maxToAdd = totalSlots - photoCount - videoCount
+                            let maxToAdd = maxPhotos - (existingPhotoUrls.count + identifiablePhotos.count)
                             let toAdd = loaded.prefix(max(0, maxToAdd))
                             identifiablePhotos.append(contentsOf: toAdd)
                             photoItems = []
@@ -359,9 +369,11 @@ struct EditProfileView: View {
                         }
                     }
                 }
+            }
+            if videoCount < maxVideos {
                 PhotosPicker(
                     selection: $videoItems,
-                    maxSelectionCount: min(3, totalSlots - photoCount - videoCount),
+                    maxSelectionCount: maxVideos - videoCount,
                     matching: .videos
                 ) {
                     addSlotLabel("Add video", cellSize: cellSize)
@@ -379,8 +391,8 @@ struct EditProfileView: View {
                             }
                         }
                         await MainActor.run {
-                            let maxVideos = 3 - existingVideoUrls.count
-                            let toAdd = loaded.prefix(max(0, maxVideos - identifiableVideoData.count))
+                            let maxToAdd = maxVideos - (existingVideoUrls.count + identifiableVideoData.count)
+                            let toAdd = loaded.prefix(max(0, maxToAdd))
                             identifiableVideoData.append(contentsOf: toAdd)
                             videoItems = []
                             videoPickerResetId = UUID()

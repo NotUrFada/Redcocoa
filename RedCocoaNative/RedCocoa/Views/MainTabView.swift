@@ -101,6 +101,7 @@ struct MainTabView: View {
             UIApplication.shared.applicationIconBadgeNumber = unreadMessageCount + likesCount
         }
         .onAppear {
+            selectedTab = 0
             UIApplication.shared.applicationIconBadgeNumber = unreadMessageCount + likesCount
         }
     }
