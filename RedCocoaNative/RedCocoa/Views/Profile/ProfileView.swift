@@ -10,6 +10,7 @@ struct ProfileView: View {
     @State private var loading = true
     @State private var showReportMenu = false
     @State private var reportSent = false
+    @State private var showBlockError = false
     
     var body: some View {
         Group {
@@ -44,6 +45,11 @@ struct ProfileView: View {
             Button("Inappropriate") { report(reason: "inappropriate") }
             Button("Other") { report(reason: "other") }
             Button("Cancel", role: .cancel) {}
+        }
+        .alert("Could not block", isPresented: $showBlockError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please try again.")
         }
     }
     
@@ -286,8 +292,13 @@ struct ProfileView: View {
     
     private func block() async {
         guard let userId = auth.user?.id else { return }
-        try? await APIService.blockUser(blockerId: userId, blockedId: profileId)
-        dismiss()
+        do {
+            try await APIService.blockUser(blockerId: userId, blockedId: profileId)
+            NotificationCenter.default.post(name: .profileDidUpdate, object: nil)
+            await MainActor.run { dismiss() }
+        } catch {
+            await MainActor.run { showBlockError = true }
+        }
     }
     
     private func report(reason: String) {

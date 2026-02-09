@@ -71,9 +71,9 @@ struct InCallView: View {
                                 .foregroundStyle(Color.textOnDark)
                             HStack(spacing: 6) {
                                 Circle()
-                                    .fill(callService.connectionState == .connected ? Color.green : Color.orange)
+                                    .fill(callService.connectionState == .connected && callService.remoteUserId != nil ? Color.green : Color.orange)
                                     .frame(width: 8, height: 8)
-                                Text(callService.connectionState == .connected ? "Connected" : "Connecting...")
+                                Text(callStatusText)
                                     .font(.subheadline)
                                     .foregroundStyle(Color.textMuted)
                             }
@@ -161,6 +161,14 @@ struct InCallView: View {
         }
     }
     
+    private var callStatusText: String {
+        let connected = callService.connectionState == .connected
+        let remoteJoined = callService.remoteUserId != nil
+        if connected && remoteJoined { return "Connected" }
+        if connected { return "Waiting for \(otherName)…" }
+        return "Connecting…"
+    }
+
     private var profilePlaceholder: some View {
         Circle()
             .fill(Color.bgCard)

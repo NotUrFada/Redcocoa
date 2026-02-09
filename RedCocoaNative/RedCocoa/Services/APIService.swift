@@ -81,6 +81,10 @@ enum APIService {
             return MockData.profiles.prefix(2).map { LikeWithProfile(profile: $0, status: "Liked you", isMatch: false) }
         }
         
+        struct BlockedRow: Decodable { let blocked_id: String }
+        let blockedRows: [BlockedRow] = (try? await client.from("blocked_users").select("blocked_id").eq("blocker_id", value: userId).execute().value) ?? []
+        let blockedIds = Set(blockedRows.map { $0.blocked_id.lowercased() })
+        
         struct LikeRow: Decodable { let from_user_id: String }
         struct MatchRow: Decodable { let user1_id: String, user2_id: String }
         struct PassedRow: Decodable { let passed_id: String }
@@ -91,9 +95,10 @@ enum APIService {
         let likes: [LikeRow] = (try? await client.from("likes").select("from_user_id").eq("to_user_id", value: userId).execute().value) ?? []
         let matchRows: [MatchRow] = (try? await client.from("matches").select("user1_id, user2_id").execute().value) ?? []
         let uid = userId.lowercased()
-        let matchIdsLower = Set(matchRows.flatMap { [$0.user1_id, $0.user2_id] }.filter { $0.lowercased() != uid }.map { $0.lowercased() })
+        var matchIdsLower = Set(matchRows.flatMap { [$0.user1_id, $0.user2_id] }.filter { $0.lowercased() != uid }.map { $0.lowercased() })
+        matchIdsLower = matchIdsLower.subtracting(blockedIds)
         
-        // Matches: include in Likes with isMatch true (matches first), exclude passed
+        // Matches: include in Likes with isMatch true (matches first), exclude passed and blocked
         var matchProfiles: [LikeWithProfile] = []
         if !matchIdsLower.isEmpty {
             let matchIds = Array(matchIdsLower.filter { !passedIds.contains($0) })
@@ -103,8 +108,8 @@ enum APIService {
             }
         }
         
-        // Non-match likes, exclude passed
-        let likeIds = likes.map { $0.from_user_id }.filter { !matchIdsLower.contains($0.lowercased()) && !passedIds.contains($0.lowercased()) }
+        // Non-match likes, exclude passed and blocked
+        let likeIds = likes.map { $0.from_user_id }.filter { !matchIdsLower.contains($0.lowercased()) && !passedIds.contains($0.lowercased()) && !blockedIds.contains($0.lowercased()) }
         guard !likeIds.isEmpty || !matchProfiles.isEmpty else { return [] }
         
         var result = matchProfiles
@@ -129,11 +134,16 @@ enum APIService {
             return MockData.profiles.prefix(2).map { ChatPreview(id: $0.id, name: $0.name, image: $0.primaryPhoto, lastMessage: "No messages yet", time: "", dateStr: "", unreadCount: 0, lastMessageAt: nil) }
         }
         
+        struct BlockedRow: Decodable { let blocked_id: String }
+        let blockedRows: [BlockedRow] = (try? await client.from("blocked_users").select("blocked_id").eq("blocker_id", value: userId).execute().value) ?? []
+        let blockedIds = Set(blockedRows.map { $0.blocked_id.lowercased() })
+        
         struct MatchRow: Decodable { let id: String, user1_id: String, user2_id: String }
         let matches: [MatchRow] = (try? await client.from("matches").select("id, user1_id, user2_id").execute().value) ?? []
         let uid = userId.lowercased()
         let relevant = matches.filter { $0.user1_id.lowercased() == uid || $0.user2_id.lowercased() == uid }
-        let otherIds = relevant.map { $0.user1_id.lowercased() == uid ? $0.user2_id : $0.user1_id }
+        var otherIds = relevant.map { $0.user1_id.lowercased() == uid ? $0.user2_id : $0.user1_id }
+        otherIds = otherIds.filter { !blockedIds.contains($0.lowercased()) }
         guard !otherIds.isEmpty else { return [] }
         
         let matchByOther = Dictionary(uniqueKeysWithValues: relevant.map { row in
@@ -366,6 +376,20 @@ enum APIService {
         guard let r = rows.first else { return nil }
         return CallInvite(id: r.id, channelName: r.channel_name, callerId: r.caller_id, callType: r.call_type)
     }
+
+    /// Ringing call invites for this user (from any match) – for global incoming call UI and notifications.
+    static func getMyRingingCalls(calleeId: String) async throws -> CallInvite? {
+        guard let client = client, calleeId != "demo" else { return nil }
+        struct Row: Decodable {
+            let id: String
+            let channel_name: String
+            let caller_id: String
+            let call_type: String
+        }
+        let rows: [Row] = (try? await client.from("call_invites").select("id, channel_name, caller_id, call_type").eq("callee_id", value: calleeId).eq("status", value: "ringing").order("created_at", ascending: false).limit(1).execute().value) ?? []
+        guard let r = rows.first else { return nil }
+        return CallInvite(id: r.id, channelName: r.channel_name, callerId: r.caller_id, callType: r.call_type)
+    }
     
     // MARK: - Profile
     static func getProfileById(_ id: String, userId: String?) async throws -> Profile? {
@@ -377,12 +401,14 @@ enum APIService {
     
     // MARK: - Block & Report
     static func blockUser(blockerId: String, blockedId: String) async throws {
-        guard let client = client else { return }
+        guard let client = client else {
+            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not configured"])
+        }
         struct BlockedInsert: Encodable {
             let blocker_id: String
             let blocked_id: String
         }
-        try await client.from("blocked_users").upsert(BlockedInsert(blocker_id: blockerId, blocked_id: blockedId)).execute()
+        try await client.from("blocked_users").upsert(BlockedInsert(blocker_id: blockerId, blocked_id: blockedId), onConflict: "blocker_id, blocked_id").execute()
     }
     
     static func reportUser(reporterId: String, reportedId: String, reason: String) async throws {
@@ -556,7 +582,7 @@ struct ChatPreview: Identifiable {
     let lastMessageAt: Date?
 }
 
-struct CallInvite: Identifiable {
+struct CallInvite: Identifiable, Equatable {
     let id: String
     let channelName: String
     let callerId: String

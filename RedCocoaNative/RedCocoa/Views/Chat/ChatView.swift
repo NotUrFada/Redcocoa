@@ -270,8 +270,17 @@ struct ChatView: View {
                 incomingCallOverlay(invite: invite)
             }
         }
+        .onChange(of: incomingCall) { _, new in
+            if new != nil {
+                SoundEffectService.startCallRinging()
+                NotificationService.shared.scheduleIncomingCallNotification(callerName: otherProfile?.name ?? "Someone")
+            } else {
+                SoundEffectService.stopCallRinging()
+                NotificationService.shared.cancelIncomingCallNotification()
+            }
+        }
     }
-    
+
     private func startInAppCall(isVideo: Bool) {
         guard CallService.shared.hasValidConfig else {
             callError = CallError.missingAppId.localizedDescription
@@ -301,46 +310,80 @@ struct ChatView: View {
     @ViewBuilder
     private func incomingCallOverlay(invite: CallInvite) -> some View {
         ZStack {
-            Color.black.opacity(0.7).ignoresSafeArea()
-            VStack(spacing: 24) {
-                Text("\(otherProfile?.name ?? "Match") is calling")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                Text(invite.callType == "video" ? "Video call" : "Voice call")
+            Color.bgDark.ignoresSafeArea()
+            VStack(spacing: 32) {
+                Spacer()
+                Text("Incoming Call")
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.8))
-                HStack(spacing: 48) {
+                    .fontWeight(.medium)
+                    .foregroundStyle(Color.textMuted)
+                if let urlStr = otherProfile?.primaryPhoto, !urlStr.isEmpty, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if case .success(let img) = phase {
+                            img.resizable().aspectRatio(contentMode: .fill)
+                        } else {
+                            Circle().fill(Color.bgCard).overlay { Image(systemName: "person.fill").font(.system(size: 60)).foregroundStyle(Color.textMuted) }
+                        }
+                    }
+                    .frame(width: 140, height: 140)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.brand.opacity(0.5), lineWidth: 3))
+                } else {
+                    Circle()
+                        .fill(Color.bgCard)
+                        .frame(width: 140, height: 140)
+                        .overlay { Image(systemName: "person.fill").font(.system(size: 60)).foregroundStyle(Color.textMuted) }
+                        .overlay(Circle().stroke(Color.brand.opacity(0.5), lineWidth: 3))
+                }
+                VStack(spacing: 6) {
+                    Text(otherProfile?.name ?? "Match")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.textOnDark)
+                    Text(invite.callType == "video" ? "Video Call" : "Voice Call")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.textMuted)
+                }
+                Spacer()
+                HStack(spacing: 56) {
                     Button {
                         Task { await declineCall(invite) }
                     } label: {
-                        VStack(spacing: 8) {
+                        VStack(spacing: 12) {
                             Image(systemName: "phone.down.fill")
-                                .font(.system(size: 28))
+                                .font(.system(size: 32))
                             Text("Decline")
-                                .font(.caption)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
                         }
-                        .foregroundStyle(.red)
+                        .foregroundStyle(.white)
+                        .frame(width: 76, height: 76)
+                        .background(Color.red.gradient, in: Circle())
                     }
                     .buttonStyle(.plain)
                     Button {
                         Task { await answerCall(invite) }
                     } label: {
-                        VStack(spacing: 8) {
+                        VStack(spacing: 12) {
                             Image(systemName: "phone.fill")
-                                .font(.system(size: 28))
+                                .font(.system(size: 32))
                             Text("Answer")
-                                .font(.caption)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
                         }
-                        .foregroundStyle(.green)
+                        .foregroundStyle(.white)
+                        .frame(width: 76, height: 76)
+                        .background(Color.green.gradient, in: Circle())
                     }
                     .buttonStyle(.plain)
                 }
+                .padding(.bottom, 56)
             }
         }
     }
     
     private func answerCall(_ invite: CallInvite) async {
+        NotificationService.shared.cancelIncomingCallNotification()
         do {
             activeCallIsVideo = invite.callType == "video"
             try await CallService.shared.joinChannel(invite.channelName, uid: UInt((auth.user?.id.hashValue ?? 0) & 0x7FFFFFFF), isVideo: activeCallIsVideo)
@@ -352,8 +395,9 @@ struct ChatView: View {
             incomingCall = nil
         }
     }
-    
+
     private func declineCall(_ invite: CallInvite) async {
+        NotificationService.shared.cancelIncomingCallNotification()
         try? await APIService.updateCallStatus(inviteId: invite.id, status: "missed")
         incomingCall = nil
     }
