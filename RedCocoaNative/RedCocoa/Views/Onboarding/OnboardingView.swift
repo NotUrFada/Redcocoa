@@ -49,19 +49,27 @@ struct OnboardingView: View {
                     useLogo: false
                 )
                 .tag(2)
+                
+                OnboardingPage(
+                    icon: "chart.bar.doc.horizontal",
+                    title: "Scientific matching",
+                    subtitle: "We use Big Five personality, attachment style, and values so you see real compatibility—not just photos.",
+                    useLogo: false
+                )
+                .tag(3)
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
             
             Spacer()
             
             Button {
-                if currentPage < 2 {
+                if currentPage < 3 {
                     withAnimation(.easeInOut(duration: 0.3)) { currentPage += 1 }
                 } else {
                     withAnimation(.easeOut(duration: 0.35)) { showProfileSetup = true }
                 }
             } label: {
-                Text(currentPage < 2 ? "Continue" : "Set up profile")
+                Text(currentPage < 3 ? "Continue" : "Set up profile")
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -71,6 +79,7 @@ struct OnboardingView: View {
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
+            .animation(.easeInOut(duration: 0.2), value: currentPage)
         }
     }
 }

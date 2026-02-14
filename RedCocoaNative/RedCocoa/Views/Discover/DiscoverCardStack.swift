@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 
+/// Discover card that shows scientific matching metrics (no swipe).
 struct DiscoverCardStack: View {
     let profile: Profile
     var preloadedImage: UIImage? = nil
@@ -9,124 +10,220 @@ struct DiscoverCardStack: View {
     let onMessage: () -> Void
     var onTap: (() -> Void)?
     
-    @State private var dragOffset: CGSize = .zero
-    @State private var isDragging = false
-    @State private var buttonSwipeDirection: CGFloat? = nil
+    var body: some View {
+        MatchingMetricsCardView(
+            profile: profile,
+            preloadedImage: preloadedImage,
+            onPass: onPass,
+            onLike: onLike,
+            onMessage: onMessage,
+            onTap: onTap
+        )
+    }
+}
+
+/// Displays Big Five, attachment style, values alignment and action buttons.
+struct MatchingMetricsCardView: View {
+    let profile: Profile
+    var preloadedImage: UIImage? = nil
+    let onPass: () -> Void
+    let onLike: () -> Void
+    let onMessage: () -> Void
+    var onTap: (() -> Void)?
     
-    private let swipeThreshold: CGFloat = 100
-    private let rotationStrength: Double = 0.15
+    private let barHeight: CGFloat = 8
+    private let barCorner: CGFloat = 4
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Card - fills available space with swipe gestures
-            ZStack {
-                ProfileCardView(profile: profile, preloadedImage: preloadedImage)
-                    .overlay(alignment: .leading) {
-                        if dragOffset.width < -30 {
-                            SwipeOverlay(label: "NOPE", color: .red, rotation: -15)
-                                .opacity(min(1, -dragOffset.width / 80))
-                        }
-                    }
-                    .overlay(alignment: .trailing) {
-                        if dragOffset.width > 30 {
-                            SwipeOverlay(label: "LIKE", color: Color.brand, rotation: 15)
-                                .opacity(min(1, dragOffset.width / 80))
-                        }
-                    }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .offset(dragOffset)
-            .rotationEffect(.degrees(Double(dragOffset.width) * rotationStrength))
-            .onTapGesture { onTap?() }
-            .gesture(
-                DragGesture(minimumDistance: 20)
-                    .onChanged { value in
-                        dragOffset = value.translation
-                        isDragging = true
-                    }
-                    .onEnded { value in
-                        let width = value.translation.width
-                        if width < -swipeThreshold {
-                            SoundEffectService.playPass()
-                            onPass()
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                dragOffset = CGSize(width: -500, height: value.translation.height * 0.5)
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                dragOffset = .zero
-                            }
-                        } else if width > swipeThreshold {
-                            SoundEffectService.playLike()
-                            onLike()
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                dragOffset = CGSize(width: 500, height: value.translation.height * 0.5)
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                dragOffset = .zero
-                            }
-                        } else {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                                dragOffset = .zero
-                            }
-                        }
-                        isDragging = false
-                    }
-            )
-            .padding(.horizontal, 20)
-            .onChange(of: buttonSwipeDirection) { _, dir in
-                guard let dir = dir else { return }
-                if dir < 0 { onPass() } else { onLike() }
-                withAnimation(.easeOut(duration: 0.2)) {
-                    dragOffset = CGSize(width: dir * 500, height: 0)
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    dragOffset = .zero
-                    buttonSwipeDirection = nil
-                }
-            }
-            
-            Spacer(minLength: 0)
-            
-            // Action buttons
-            HStack(spacing: 24) {
-                Button(action: { SoundEffectService.playPass(); buttonSwipeDirection = -1 }) {
-                    Image(systemName: "xmark")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .frame(width: 56, height: 56)
-                        .background(Color.bgCard)
-                        .clipShape(Circle())
-                }
-                .foregroundStyle(Color.textOnDark)
-                .buttonStyle(.plain)
+        ScrollView {
+            VStack(spacing: 0) {
+                // Profile header (photo + name, age)
+                profileHeader
+                    .onTapGesture { onTap?() }
                 
-                Button(action: onMessage) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "bubble.left")
-                        Text("Send message")
+                // Matching metrics sections
+                VStack(alignment: .leading, spacing: 24) {
+                    bigFiveSection
+                    attachmentSection
+                    valuesSection
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+            }
+            .frame(minWidth: 0, maxWidth: .infinity)
+        }
+        .scrollIndicators(.hidden)
+        .background(Color.bgDark)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            actionButtons
+        }
+    }
+    
+    private var profileHeader: some View {
+        ZStack(alignment: .bottomLeading) {
+            if let img = preloadedImage {
+                Image(uiImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+            } else if let urlString = profile.primaryPhoto, !urlString.isEmpty, let url = URL(string: urlString) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image): image.resizable().aspectRatio(contentMode: .fill)
+                    default: Color.bgCard
                     }
-                    .font(.subheadline)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+            } else {
+                Color.bgCard.frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            LinearGradient(
+                colors: [Color.bgDark.opacity(0.9), Color.clear],
+                startPoint: .bottom,
+                endPoint: .top
+            )
+            .frame(height: 120)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(profile.name)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.textOnDark)
+                    if let age = profile.displayAge {
+                        Text("• \(age)")
+                            .font(.body)
+                            .foregroundStyle(Color.textMuted)
+                    }
+                }
+                if let loc = profile.location {
+                    Text(loc)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.textMuted)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 220)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+    }
+    
+    private var bigFiveSection: some View {
+        let s = profile.bigFiveScores()
+        let traits = ProfileOptions.bigFiveTraits
+        let values = [s.O, s.C, s.E, s.A, s.N]
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Big Five personality")
+                .font(.headline)
+                .foregroundStyle(Color.textOnDark)
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(traits.enumerated()), id: \.offset) { i, t in
+                    HStack(spacing: 10) {
+                        Text(t.short)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color.textOnDark)
+                            .lineLimit(1)
+                            .frame(minWidth: 0, maxWidth: 100, alignment: .leading)
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: barCorner)
+                                    .fill(Color.bgCard)
+                                    .frame(height: barHeight)
+                                RoundedRectangle(cornerRadius: barCorner)
+                                    .fill(Color.brand)
+                                    .frame(width: max(0, geo.size.width * CGFloat(values[i]) / 100), height: barHeight)
+                            }
+                        }
+                        .frame(height: barHeight)
+                        Text("\(values[i])")
+                            .font(.caption)
+                            .foregroundStyle(Color.textMuted)
+                            .frame(width: 24, alignment: .trailing)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var attachmentSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Attachment style")
+                .font(.headline)
+                .foregroundStyle(Color.textOnDark)
+            Text(profile.displayAttachmentStyle())
+                .font(.subheadline)
+                .foregroundStyle(Color.textMuted)
+        }
+    }
+    
+    private var valuesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Values alignment")
+                .font(.headline)
+                .foregroundStyle(Color.textOnDark)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(profile.displayValuesAlignment())%")
+                    .font(.title2)
                     .fontWeight(.semibold)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 14)
+                    .foregroundStyle(Color.brand)
+                Text("compatibility with your stated values")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.textMuted)
+            }
+        }
+    }
+    
+    private var actionButtons: some View {
+        HStack(spacing: 20) {
+            Button(action: { SoundEffectService.playPass(); onPass() }) {
+                Image(systemName: "xmark")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .frame(width: 56, height: 56)
+                    .background(Color.bgCard)
+                    .clipShape(Circle())
+            }
+            .foregroundStyle(Color.textOnDark)
+            .buttonStyle(.plain)
+            
+            Button(action: onMessage) {
+                HStack(spacing: 8) {
+                    Image(systemName: "bubble.left")
+                    Text("Send message")
+                }
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+                .background(Color.brand)
+                .foregroundStyle(.white)
+                .cornerRadius(24)
+            }
+            .buttonStyle(.plain)
+            
+            Button(action: { SoundEffectService.playLike(); onLike() }) {
+                Image(systemName: "heart.fill")
+                    .font(.title2)
+                    .frame(width: 56, height: 56)
                     .background(Color.brand)
                     .foregroundStyle(.white)
-                    .cornerRadius(24)
-                }
-                .buttonStyle(.plain)
-                
-                Button(action: { SoundEffectService.playLike(); buttonSwipeDirection = 1 }) {
-                    Image(systemName: "heart.fill")
-                        .font(.title2)
-                        .frame(width: 56, height: 56)
-                        .background(Color.brand)
-                        .foregroundStyle(.white)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
+                    .clipShape(Circle())
             }
-            .padding(.bottom, 34)
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .padding(.bottom, 34)
+        .background(Color.bgDark)
     }
 }
 

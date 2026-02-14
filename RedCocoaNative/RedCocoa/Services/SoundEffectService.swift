@@ -1,7 +1,7 @@
 import UIKit
 import AudioToolbox
 
-/// Plays sound effects for swipe actions, button taps, match celebration, and incoming calls.
+/// Plays sound effects for swipe actions, button taps, and match celebration.
 enum SoundEffectService {
 
     private static var callRingTimer: Timer?

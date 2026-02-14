@@ -89,4 +89,20 @@ enum ProfileOptions {
         "What makes you feel most respected when dating?",
         "What's something from your culture you love sharing?",
     ]
+    
+    // MARK: - Scientific matching metrics
+    static let bigFiveTraits: [(key: String, short: String, full: String)] = [
+        ("O", "Openness", "Openness to experience"),
+        ("C", "Conscientiousness", "Conscientiousness"),
+        ("E", "Extraversion", "Extraversion"),
+        ("A", "Agreeableness", "Agreeableness"),
+        ("N", "Neuroticism", "Emotional stability")
+    ]
+    
+    static let attachmentStyleLabels: [String: String] = [
+        "Secure": "Secure",
+        "Anxious": "Anxious",
+        "Avoidant": "Avoidant",
+        "Anxious-Avoidant": "Anxious-Avoidant"
+    ]
 }

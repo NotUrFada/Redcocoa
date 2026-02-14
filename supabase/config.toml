@@ -1,3 +1,7 @@
 # Skip gateway JWT verification for delete-user - we verify the JWT inside the function
 [functions.delete-user]
 verify_jwt = false
+
+# Allow twilio-token to be invoked with anon key (no user JWT required)
+[functions.twilio-token]
+verify_jwt = false

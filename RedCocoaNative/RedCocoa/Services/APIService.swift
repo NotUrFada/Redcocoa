@@ -337,60 +337,6 @@ enum APIService {
         }
     }
     
-    // MARK: - Calls
-    static func createCallInvite(matchId: String, callerId: String, calleeId: String, channelName: String, callType: String) async throws -> String {
-        guard let client = client, callerId != "demo" else {
-            throw NSError(domain: "APIService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not configured"])
-        }
-        struct CreateCallInviteParams: Encodable {
-            let match_id: String
-            let caller_id: String
-            let callee_id: String
-            let channel_name: String
-            let call_type: String
-        }
-        let params = CreateCallInviteParams(match_id: matchId, caller_id: callerId, callee_id: calleeId, channel_name: channelName, call_type: callType)
-        let result: String = try await client.rpc("create_call_invite", params: params).execute().value
-        return result
-    }
-    
-    static func updateCallStatus(inviteId: String, status: String) async throws {
-        guard let client = client else { return }
-        struct StatusUpdate: Encodable {
-            let status: String
-            let updated_at: String
-        }
-        let now = ISO8601DateFormatter().string(from: Date())
-        _ = try? await client.from("call_invites").update(StatusUpdate(status: status, updated_at: now)).eq("id", value: inviteId).execute()
-    }
-    
-    static func getRingingCall(matchId: String, calleeId: String) async throws -> CallInvite? {
-        guard let client = client else { return nil }
-        struct Row: Decodable {
-            let id: String
-            let channel_name: String
-            let caller_id: String
-            let call_type: String
-        }
-        let rows: [Row] = (try? await client.from("call_invites").select("id, channel_name, caller_id, call_type").eq("match_id", value: matchId).eq("callee_id", value: calleeId).eq("status", value: "ringing").order("created_at", ascending: false).limit(1).execute().value) ?? []
-        guard let r = rows.first else { return nil }
-        return CallInvite(id: r.id, channelName: r.channel_name, callerId: r.caller_id, callType: r.call_type)
-    }
-
-    /// Ringing call invites for this user (from any match) – for global incoming call UI and notifications.
-    static func getMyRingingCalls(calleeId: String) async throws -> CallInvite? {
-        guard let client = client, calleeId != "demo" else { return nil }
-        struct Row: Decodable {
-            let id: String
-            let channel_name: String
-            let caller_id: String
-            let call_type: String
-        }
-        let rows: [Row] = (try? await client.from("call_invites").select("id, channel_name, caller_id, call_type").eq("callee_id", value: calleeId).eq("status", value: "ringing").order("created_at", ascending: false).limit(1).execute().value) ?? []
-        guard let r = rows.first else { return nil }
-        return CallInvite(id: r.id, channelName: r.channel_name, callerId: r.caller_id, callType: r.call_type)
-    }
-    
     // MARK: - Profile
     static func getProfileById(_ id: String, userId: String?) async throws -> Profile? {
         guard let client = client, id != "demo" else {
@@ -465,7 +411,13 @@ enum APIService {
         humorPreference: String? = nil,
         toneVibe: String? = nil,
         badges: [String]? = nil,
-        promptResponses: [String: String]? = nil
+        promptResponses: [String: String]? = nil,
+        bigFiveOpenness: Int? = nil,
+        bigFiveConscientiousness: Int? = nil,
+        bigFiveExtraversion: Int? = nil,
+        bigFiveAgreeableness: Int? = nil,
+        bigFiveNeuroticism: Int? = nil,
+        attachmentStyle: String? = nil
     ) async throws {
         guard let client = client else { return }
         struct ProfileRow: Encodable {
@@ -482,6 +434,12 @@ enum APIService {
             let tone_vibe: String?
             let badges: [String]?
             let prompt_responses: [String: String]?
+            let big_five_openness: Int?
+            let big_five_conscientiousness: Int?
+            let big_five_extraversion: Int?
+            let big_five_agreeableness: Int?
+            let big_five_neuroticism: Int?
+            let attachment_style: String?
             let updated_at: String
         }
         let formatter = ISO8601DateFormatter()
@@ -499,6 +457,12 @@ enum APIService {
             tone_vibe: toneVibe,
             badges: badges,
             prompt_responses: promptResponses,
+            big_five_openness: bigFiveOpenness,
+            big_five_conscientiousness: bigFiveConscientiousness,
+            big_five_extraversion: bigFiveExtraversion,
+            big_five_agreeableness: bigFiveAgreeableness,
+            big_five_neuroticism: bigFiveNeuroticism,
+            attachment_style: attachmentStyle,
             updated_at: formatter.string(from: Date())
         )
         try await client.from("profiles").upsert(row, onConflict: "id").execute()
@@ -580,13 +544,6 @@ struct ChatPreview: Identifiable {
     let dateStr: String
     let unreadCount: Int
     let lastMessageAt: Date?
-}
-
-struct CallInvite: Identifiable, Equatable {
-    let id: String
-    let channelName: String
-    let callerId: String
-    let callType: String
 }
 
 struct ChatMessage: Identifiable {

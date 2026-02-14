@@ -2,11 +2,10 @@ import Foundation
 import UserNotifications
 import UIKit
 
-/// Handles push notification permission, device token registration, and local call notifications.
+/// Handles push notification permission and device token registration.
 @MainActor
 final class NotificationService {
     static let shared = NotificationService()
-    static let incomingCallNotificationId = "RedCocoa.incomingCall"
 
     private init() {}
 
@@ -27,22 +26,5 @@ final class NotificationService {
         Task {
             try? await APIService.saveDeviceToken(userId: userId, token: tokenString)
         }
-    }
-
-    /// Show a local notification for an incoming call so the user sees a banner/alert.
-    func scheduleIncomingCallNotification(callerName: String) {
-        let content = UNMutableNotificationContent()
-        content.title = "Incoming Call"
-        content.body = "\(callerName) is calling you"
-        content.sound = .default
-        content.categoryIdentifier = "INCOMING_CALL"
-        let request = UNNotificationRequest(identifier: Self.incomingCallNotificationId, content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 0.3, repeats: false))
-        UNUserNotificationCenter.current().add(request)
-    }
-
-    /// Cancel the incoming call notification (e.g. when user answers or declines).
-    func cancelIncomingCallNotification() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.incomingCallNotificationId])
-        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [Self.incomingCallNotificationId])
     }
 }

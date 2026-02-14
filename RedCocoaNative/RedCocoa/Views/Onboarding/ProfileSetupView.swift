@@ -43,6 +43,12 @@ struct ProfileSetupView: View {
     @State private var toneVibe: String = ""
     @State private var selectedBadges: Set<String> = []
     @State private var promptResponses: [String: String] = [:]
+    @State private var bigFiveOpenness: Double = 50
+    @State private var bigFiveConscientiousness: Double = 50
+    @State private var bigFiveExtraversion: Double = 50
+    @State private var bigFiveAgreeableness: Double = 50
+    @State private var bigFiveNeuroticism: Double = 50
+    @State private var attachmentStyle: String = ""
     @State private var saving = false
     @State private var error: String?
     @State private var showContent = false
@@ -310,6 +316,52 @@ struct ProfileSetupView: View {
                     }
                 }
                 
+                // Scientific matching (Big Five + attachment style)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Scientific matching")
+                        .font(.headline)
+                        .foregroundStyle(Color.textOnDark)
+                    Text("Used to show compatibility on profiles. You’ll see others’ metrics too.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.textMuted)
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Big Five personality")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color.textOnDark)
+                        bigFiveSlider(label: "Openness", value: $bigFiveOpenness)
+                        bigFiveSlider(label: "Conscientiousness", value: $bigFiveConscientiousness)
+                        bigFiveSlider(label: "Extraversion", value: $bigFiveExtraversion)
+                        bigFiveSlider(label: "Agreeableness", value: $bigFiveAgreeableness)
+                        bigFiveSlider(label: "Neuroticism", value: $bigFiveNeuroticism)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Attachment style")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color.textOnDark)
+                        FlowLayout(spacing: 8) {
+                            ForEach(["Secure", "Anxious", "Avoidant", "Anxious-Avoidant"], id: \.self) { style in
+                                let selected = attachmentStyle == style
+                                Button {
+                                    attachmentStyle = selected ? "" : style
+                                } label: {
+                                    Text(style)
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(selected ? Color.brand : Color.bgCard)
+                                        .foregroundStyle(selected ? .white : Color.textOnDark)
+                                        .cornerRadius(16)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+                
                 // Prompts section
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Prompts (optional)")
@@ -428,6 +480,21 @@ struct ProfileSetupView: View {
             }
     }
     
+    private func bigFiveSlider(label: String, value: Binding<Double>) -> some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(Color.textOnDark)
+                .frame(width: 110, alignment: .leading)
+            Slider(value: value, in: 0...100, step: 1)
+                .tint(Color.brand)
+            Text("\(Int(value.wrappedValue))")
+                .font(.caption)
+                .foregroundStyle(Color.textMuted)
+                .frame(width: 28, alignment: .trailing)
+        }
+    }
+    
     private func loadExistingProfile() async {
         guard let profile = auth.profile else { return }
         await MainActor.run {
@@ -439,6 +506,12 @@ struct ProfileSetupView: View {
             if let tone = profile.toneVibe { toneVibe = tone }
             if let bgs = profile.badges { selectedBadges = Set(bgs) }
             if let pr = profile.promptResponses { promptResponses = pr }
+            if let v = profile.bigFiveOpenness { bigFiveOpenness = Double(v) }
+            if let v = profile.bigFiveConscientiousness { bigFiveConscientiousness = Double(v) }
+            if let v = profile.bigFiveExtraversion { bigFiveExtraversion = Double(v) }
+            if let v = profile.bigFiveAgreeableness { bigFiveAgreeableness = Double(v) }
+            if let v = profile.bigFiveNeuroticism { bigFiveNeuroticism = Double(v) }
+            if let s = profile.attachmentStyle, !s.isEmpty { attachmentStyle = s }
             existingPhotoUrls = (profile.photoUrls ?? []).map { ProfileSetupIdentifiablePhotoUrl(url: $0) }
             existingVideoUrls = (profile.videoUrls ?? []).map { ProfileSetupIdentifiableVideoUrl(url: $0) }
         }
@@ -477,7 +550,13 @@ struct ProfileSetupView: View {
                 humorPreference: humorPreference.isEmpty ? nil : humorPreference,
                 toneVibe: toneVibe.isEmpty ? nil : toneVibe,
                 badges: selectedBadges.isEmpty ? nil : Array(selectedBadges),
-                promptResponses: filtered.isEmpty ? nil : filtered
+                promptResponses: filtered.isEmpty ? nil : filtered,
+                bigFiveOpenness: Int(bigFiveOpenness),
+                bigFiveConscientiousness: Int(bigFiveConscientiousness),
+                bigFiveExtraversion: Int(bigFiveExtraversion),
+                bigFiveAgreeableness: Int(bigFiveAgreeableness),
+                bigFiveNeuroticism: Int(bigFiveNeuroticism),
+                attachmentStyle: attachmentStyle.isEmpty ? nil : attachmentStyle
             )
             await auth.fetchProfile(userId: userId)
             NotificationCenter.default.post(name: .profileDidUpdate, object: nil)

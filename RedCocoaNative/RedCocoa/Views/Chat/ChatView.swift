@@ -16,10 +16,6 @@ struct ChatView: View {
     @State private var otherIsTyping = false
     @State private var typingDebounceTask: Task<Void, Never>?
     @State private var showVoiceRecorder = false
-    @State private var callError: String?
-    @State private var showInCallView = false
-    @State private var activeCallIsVideo = false
-    @State private var incomingCall: CallInvite?
     
     @State private var showContent = false
     
@@ -57,25 +53,6 @@ struct ChatView: View {
                 }
                 .buttonStyle(.plain)
                 Spacer()
-                
-                if otherProfile != nil {
-                    Button {
-                        startInAppCall(isVideo: false)
-                    } label: {
-                        Image(systemName: "phone.fill")
-                            .font(.title3)
-                            .foregroundStyle(Color.brand)
-                    }
-                    .buttonStyle(.plain)
-                    Button {
-                        startInAppCall(isVideo: true)
-                    } label: {
-                        Image(systemName: "video.fill")
-                            .font(.title3)
-                            .foregroundStyle(Color.brand)
-                    }
-                    .buttonStyle(.plain)
-                }
             }
             .padding()
             .background(Color.bgDark)
@@ -255,153 +232,8 @@ struct ChatView: View {
         } message: {
             if let err = sendError { Text(err) }
         }
-        .alert("Can't call", isPresented: Binding(get: { callError != nil }, set: { if !$0 { callError = nil } })) {
-            Button("OK", role: .cancel) { callError = nil }
-        } message: {
-            if let err = callError { Text(err) }
-        }
-        .fullScreenCover(isPresented: $showInCallView) {
-            InCallView(otherName: otherProfile?.name ?? "Match", otherPhotoUrl: otherProfile?.primaryPhoto, isVideo: activeCallIsVideo) {
-                showInCallView = false
-            }
-        }
-        .overlay {
-            if let invite = incomingCall {
-                incomingCallOverlay(invite: invite)
-            }
-        }
-        .onChange(of: incomingCall) { _, new in
-            if new != nil {
-                SoundEffectService.startCallRinging()
-                NotificationService.shared.scheduleIncomingCallNotification(callerName: otherProfile?.name ?? "Someone")
-            } else {
-                SoundEffectService.stopCallRinging()
-                NotificationService.shared.cancelIncomingCallNotification()
-            }
-        }
     }
 
-    private func startInAppCall(isVideo: Bool) {
-        guard CallService.shared.hasValidConfig else {
-            callError = CallError.missingAppId.localizedDescription
-            return
-        }
-        guard let uid = auth.user?.id else {
-            callError = "Sign in to call"
-            return
-        }
-        activeCallIsVideo = isVideo
-        Task {
-            do {
-                let mid = try await APIService.getOrCreateMatchId(userId: uid, otherId: otherId)
-                // Agora channel names max 64 chars; matchId(36) + _ + suffix(12) = 49
-                let suffix = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(12))
-                let channelName = "\(mid)_\(suffix)"
-                _ = try await APIService.createCallInvite(matchId: mid, callerId: uid, calleeId: otherId, channelName: channelName, callType: isVideo ? "video" : "voice")
-                let uidInt = UInt(uid.hashValue & 0x7FFFFFFF)
-                try await CallService.shared.joinChannel(channelName, uid: uidInt, isVideo: isVideo)
-                showInCallView = true
-            } catch {
-                callError = error.localizedDescription
-            }
-        }
-    }
-    
-    @ViewBuilder
-    private func incomingCallOverlay(invite: CallInvite) -> some View {
-        ZStack {
-            Color.bgDark.ignoresSafeArea()
-            VStack(spacing: 32) {
-                Spacer()
-                Text("Incoming Call")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(Color.textMuted)
-                if let urlStr = otherProfile?.primaryPhoto, !urlStr.isEmpty, let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if case .success(let img) = phase {
-                            img.resizable().aspectRatio(contentMode: .fill)
-                        } else {
-                            Circle().fill(Color.bgCard).overlay { Image(systemName: "person.fill").font(.system(size: 60)).foregroundStyle(Color.textMuted) }
-                        }
-                    }
-                    .frame(width: 140, height: 140)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.brand.opacity(0.5), lineWidth: 3))
-                } else {
-                    Circle()
-                        .fill(Color.bgCard)
-                        .frame(width: 140, height: 140)
-                        .overlay { Image(systemName: "person.fill").font(.system(size: 60)).foregroundStyle(Color.textMuted) }
-                        .overlay(Circle().stroke(Color.brand.opacity(0.5), lineWidth: 3))
-                }
-                VStack(spacing: 6) {
-                    Text(otherProfile?.name ?? "Match")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Color.textOnDark)
-                    Text(invite.callType == "video" ? "Video Call" : "Voice Call")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.textMuted)
-                }
-                Spacer()
-                HStack(spacing: 56) {
-                    Button {
-                        Task { await declineCall(invite) }
-                    } label: {
-                        VStack(spacing: 12) {
-                            Image(systemName: "phone.down.fill")
-                                .font(.system(size: 32))
-                            Text("Decline")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(width: 76, height: 76)
-                        .background(Color.red.gradient, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    Button {
-                        Task { await answerCall(invite) }
-                    } label: {
-                        VStack(spacing: 12) {
-                            Image(systemName: "phone.fill")
-                                .font(.system(size: 32))
-                            Text("Answer")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(width: 76, height: 76)
-                        .background(Color.green.gradient, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.bottom, 56)
-            }
-        }
-    }
-    
-    private func answerCall(_ invite: CallInvite) async {
-        NotificationService.shared.cancelIncomingCallNotification()
-        do {
-            activeCallIsVideo = invite.callType == "video"
-            try await CallService.shared.joinChannel(invite.channelName, uid: UInt((auth.user?.id.hashValue ?? 0) & 0x7FFFFFFF), isVideo: activeCallIsVideo)
-            try? await APIService.updateCallStatus(inviteId: invite.id, status: "active")
-            incomingCall = nil
-            showInCallView = true
-        } catch {
-            callError = error.localizedDescription
-            incomingCall = nil
-        }
-    }
-
-    private func declineCall(_ invite: CallInvite) async {
-        NotificationService.shared.cancelIncomingCallNotification()
-        try? await APIService.updateCallStatus(inviteId: invite.id, status: "missed")
-        incomingCall = nil
-    }
-    
     private var icebreakerSuggestion: String? {
         guard messages.isEmpty,
               !icebreakerDismissed,
@@ -441,9 +273,6 @@ struct ChatView: View {
                 await load()
                 if let mid = matchId, let uid = auth.user?.id {
                     otherIsTyping = await APIService.isOtherTyping(matchId: mid, otherId: otherId)
-                    if incomingCall == nil, let invite = try? await APIService.getRingingCall(matchId: mid, calleeId: uid) {
-                        incomingCall = invite
-                    }
                 }
             }
         }
